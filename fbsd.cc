@@ -32,7 +32,7 @@
  */
 
 // Homework 4
-// Coline Banigan and Katherine Drake
+// Colin Banigan and Katherine Drake
 // CSCE 438 Section 500
 // April 14, 2017
 
