@@ -29,7 +29,7 @@
 
 syntax = "proto3";
 
-package hw2;
+package hw4;
 
 import "google/protobuf/timestamp.proto";
 
