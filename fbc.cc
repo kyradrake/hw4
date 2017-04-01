@@ -31,8 +31,10 @@
  *
  */
 
-/* Will Adams and Nicholas Jackson
-   CSCE 438 Section 500*/
+// Homework 4
+// Coline Banigan and Katherine Drake
+// CSCE 438 Section 500
+// April 14, 2017
 
 #include <iostream>
 #include <memory>
@@ -51,17 +53,20 @@ using grpc::ClientReader;
 using grpc::ClientReaderWriter;
 using grpc::ClientWriter;
 using grpc::Status;
-using hw2::Message;
-using hw2::ListReply;
-using hw2::Request;
-using hw2::Reply;
-using hw2::MessengerServer;
+using hw4::Message;
+using hw4::ListReply;
+using hw4::Request;
+using hw4::Reply;
+using hw4::MessengerServer;
+
+using namespace std;
 
 //Helper function used to create a Message object given a username and message
 Message MakeMessage(const std::string& username, const std::string& msg) {
   Message m;
   m.set_username(username);
   m.set_msg(msg);
+    
   google::protobuf::Timestamp* timestamp = new google::protobuf::Timestamp();
   timestamp->set_seconds(time(NULL));
   timestamp->set_nanos(0);
@@ -70,264 +75,290 @@ Message MakeMessage(const std::string& username, const std::string& msg) {
 }
 
 class MessengerClient {
- public:
-  MessengerClient(std::shared_ptr<Channel> channel)
-      : stub_(MessengerServer::NewStub(channel)) {}
+    public:
+    MessengerClient(shared_ptr<Channel> channel)
+        : stub_(MessengerServer::NewStub(channel)) {}
 
-  //Calls the List stub function and prints out room names
-  void List(const std::string& username){
-    //Data being sent to the server
-    Request request;
-    request.set_username(username);
+    //Calls the List stub function and prints out room names
+    void List(const std::string& username) {
+        //Data being sent to the server
+        Request request;
+        request.set_username(username);
   
-    //Container for the data from the server
-    ListReply list_reply;
+        //Container for the data from the server
+        ListReply list_reply;
 
-    //Context for the client
-    ClientContext context;
-  
-    Status status = stub_->List(&context, request, &list_reply);
+        //Context for the client
+        ClientContext context;
 
-    //Loop through list_reply.all_rooms and list_reply.joined_rooms
-    //Print out the name of each room 
-    if(status.ok()){
-        std::cout << "All Rooms: \n";
-        for(std::string s : list_reply.all_rooms()){
-	  std::cout << s << std::endl;
+        Status status = stub_->List(&context, request, &list_reply);
+
+        //Loop through list_reply.all_rooms and list_reply.joined_rooms
+        //Print out the name of each room 
+        if(status.ok()) {
+            cout << "All Rooms: \n";
+            for(string s : list_reply.all_rooms()) {
+                cout << s << endl;
+            }
+            cout << "Following: \n";
+            for(string s : list_reply.joined_rooms()) {
+                cout << s << endl;;
+            }
         }
-        std::cout << "Following: \n";
-        for(std::string s : list_reply.joined_rooms()){
-          std::cout << s << std::endl;;
+        else {
+            cout << status.error_code() << ": " << status.error_message()
+                << endl;
+        } 
+    }
+
+    //Calls the Join stub function and makes user1 follow user2
+    void Join(const string& username1, const string& username2) {
+        Request request;
+        
+        //username1 is the person joining the chatroom
+        request.set_username(username1);
+        
+        //username2 is the name of the room we're joining
+        request.add_arguments(username2);
+
+        Reply reply;
+
+        ClientContext context;
+
+        Status status = stub_->Join(&context, request, &reply);
+
+        if(status.ok()) {
+            cout << reply.msg() << std::endl;
+        }
+        else {
+            cout << status.error_code() << ": " << status.error_message()
+                << endl;
+            cout << "RPC failed\n";
         }
     }
-    else{
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-    } 
-  }
 
-  //Calls the Join stub function and makes user1 follow user2
-  void Join(const std::string& username1, const std::string& username2){
-    Request request;
-    //username1 is the person joining the chatroom
-    request.set_username(username1);
-    //username2 is the name of the room we're joining
-    request.add_arguments(username2);
-
-    Reply reply;
-
-    ClientContext context;
-
-    Status status = stub_->Join(&context, request, &reply);
-
-    if(status.ok()){
-      std::cout << reply.msg() << std::endl;
-    }
-    else{
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-      std::cout << "RPC failed\n";
-    }
-  }
-
-  //Calls the Leave stub function and makes user1 no longer follow user2
-  void Leave(const std::string& username1, const std::string& username2){
-    Request request;
-
-    request.set_username(username1);
-    request.add_arguments(username2);
-
-    Reply reply;
-
-    ClientContext context;
-
-    Status status = stub_->Leave(&context, request, &reply);
-
-    if(status.ok()){
-      std::cout << reply.msg() << std::endl;
-    }
-    else{
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-      std::cout << "RPC failed\n";
-    }
-  }
-
-  //Called when a client is run
-  std::string Login(const std::string& username){
-    Request request;
-    
-    request.set_username(username);
-
-    Reply reply;
-
-    ClientContext context;
-
-    Status status = stub_->Login(&context, request, &reply);
-
-    if(status.ok()){
-      return reply.msg();
-    }
-    else{
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-      return "RPC failed";
-    }
-  }
-
-  //Calls the Chat stub function which uses a bidirectional RPC to communicate
-  void Chat (const std::string& username, const std::string& messages, const std::string& usec) {
-    ClientContext context;
-
-    std::shared_ptr<ClientReaderWriter<Message, Message>> stream(
-	stub_->Chat(&context));
-
-    //Thread used to read chat messages and send them to the server
-    std::thread writer([username, messages, usec, stream]() {  
-	  if(usec == "n") { 
-        std::string input = "Set Stream";
-        Message m = MakeMessage(username, input);
-        stream->Write(m);
-        std::cout << "Enter chat messages: \n";
-        while(getline(std::cin, input)){
-          m = MakeMessage(username, input);
-          stream->Write(m);
+    //Calls the Leave stub function and makes user1 no longer follow user2
+    void Leave(const string& username1, const string& username2) {
+        Request request;
+      
+        request.set_username(username1);
+        request.add_arguments(username2);
+      
+        Reply reply;
+      
+        ClientContext context;
+      
+        Status status = stub_->Leave(&context, request, &reply);
+      
+        if(status.ok()) {
+            cout << reply.msg() << endl;
         }
-        stream->WritesDone();
-      }
-	  else {
-		std::string input = "Set Stream";
-        Message m = MakeMessage(username, input);
-        stream->Write(m);
-		int msgs = stoi(messages);
-		int u = stoi(usec);
-		time_t start, end;
-        std::cout << "Enter chat messages: \n";
-		time(&start);
-        for(int i=0; i<msgs; i++) {
-          input = "hello" + std::to_string(i);
-		  m = MakeMessage(username, input);
-          stream->Write(m);
-		  std::cout << input << '\n';
-		  usleep(u);
+        else {
+            cout << status.error_code() << ": " << status.error_message()
+                << endl;
+            cout << "RPC failed\n";
         }
-		time(&end);
-		std::cout << "Elapsed time: " << (double)difftime(end,start) << std::endl;
-        stream->WritesDone();
-	  }
-	});
+    }
 
-    //Thread used to display chat messages from users that this client follows 
-    std::thread reader([username, stream]() {
-       Message m;
-       while(stream->Read(&m)){
-	     std::cout << m.username() << " -- " << m.msg() << std::endl;
-       }
-    });
+    //Called when a client is run
+    string Login(const std::string& username){
+        Request request;
 
-    //Wait for the threads to finish
-    writer.join();
-    reader.join();
+        request.set_username(username);
 
-  }
+        Reply reply;
 
- private:
-  std::unique_ptr<MessengerServer::Stub> stub_;
+        ClientContext context;
+
+        Status status = stub_->Login(&context, request, &reply);
+
+        if(status.ok()) {
+            return reply.msg();
+        }
+        else {
+            cout << status.error_code() << ": " << status.error_message()
+                    << endl;
+            return "RPC failed";
+        }
+    }
+
+    //Calls the Chat stub function which uses a bidirectional RPC to communicate
+    void Chat (const string& username, const string& messages, const string& usec) {
+    ClientContext context;
+
+        shared_ptr<ClientReaderWriter<Message, Message>> stream(
+        stub_->Chat(&context));
+
+        //Thread used to read chat messages and send them to the server
+        thread writer([username, messages, usec, stream]() {  
+            if(usec == "n") { 
+                string input = "Set Stream";
+                
+                Message m = MakeMessage(username, input);
+                stream->Write(m);
+                
+                cout << "Enter chat messages: \n";
+                while(getline(cin, input)) {
+                    m = MakeMessage(username, input);
+                    stream->Write(m);
+                }
+                stream->WritesDone();
+            }
+            else {
+                string input = "Set Stream";
+                
+                Message m = MakeMessage(username, input);
+                stream->Write(m);
+                
+                int msgs = stoi(messages);
+                int u = stoi(usec);
+                
+                time_t start, end;
+                cout << "Enter chat messages: \n";
+                time(&start);
+                
+                for(int i=0; i<msgs; i++) {
+                    input = "hello" + to_string(i);
+                    
+                    m = MakeMessage(username, input);
+                    stream->Write(m);
+                    
+                    cout << input << '\n';
+                    usleep(u);
+                }
+                time(&end);
+                cout << "Elapsed time: " << (double)difftime(end,start) << endl;
+                stream->WritesDone();
+            }
+        });
+
+        //Thread used to display chat messages from users that this client follows 
+        thread reader([username, stream]() {
+            Message m;
+            while(stream->Read(&m)){
+                cout << m.username() << " -- " << m.msg() << endl;
+            }
+        });
+
+        //Wait for the threads to finish
+        writer.join();
+        reader.join();
+    }
+
+    private:
+    unique_ptr<MessengerServer::Stub> stub_;
 };
 
 //Parses user input while the client is in Command Mode
 //Returns 0 if an invalid command was entered
 //Returns 1 when the user has switched to Chat Mode
-int parse_input(MessengerClient* messenger, std::string username, std::string input){
-  //Splits the input on spaces, since it is of the form: COMMAND <TARGET_USER>
-  std::size_t index = input.find_first_of(" ");
-  if(index!=std::string::npos){
-    std::string cmd = input.substr(0, index);
-    if(input.length()==index+1){
-      std::cout << "Invalid Input -- No Arguments Given\n";
-      return 0;
+int parse_input(MessengerClient* messenger, string username, string input){
+
+    //Splits the input on spaces, since it is of the form: COMMAND <TARGET_USER>
+    size_t index = input.find_first_of(" ");
+
+    if(index != string::npos) {
+        string cmd = input.substr(0, index);
+        
+        if(input.length() == index+1) {
+            cout << "Invalid Input -- No Arguments Given\n";
+            return 0;
+        }
+        
+        string argument = input.substr(index+1, (input.length()-index));
+        
+        if(cmd == "JOIN") {
+            messenger->Join(username, argument);
+        }
+        else if(cmd == "LEAVE") {
+            messenger->Leave(username, argument);
+        }
+        else {
+            cout << "Invalid Command\n";
+            return 0;   
+        }
     }
-    std::string argument = input.substr(index+1, (input.length()-index));
-    if(cmd == "JOIN"){
-      messenger->Join(username, argument);
+    else {
+        if(input == "LIST") {
+            messenger->List(username); 
+        }
+        else if(input == "CHAT") {
+            //Switch to chat mode
+            return 1;
+        }
+        else {
+            cout << "Invalid Command\n";
+            return 0;   
+        }
     }
-    else if(cmd == "LEAVE")
-      messenger->Leave(username, argument);
-    else{
-      std::cout << "Invalid Command\n";
-      return 0;   
-    }
-  }
-  else{
-    if(input == "LIST"){
-      messenger->List(username); 
-    }
-    else if(input == "CHAT"){
-      //Switch to chat mode
-      return 1;
-    }
-    else{
-      std::cout << "Invalid Command\n";
-      return 0;   
-    }
-  }
-  return 0;   
+    return 0;   
 }
 
 int main(int argc, char** argv) {
-  // Instantiate the client. It requires a channel, out of which the actual RPCs
-  // are created. This channel models a connection to an endpoint (in this case,
-  // localhost at port 50051). We indicate that the channel isn't authenticated
-  // (use of InsecureChannelCredentials()).
+    // Instantiate the client. It requires a channel, out of which the actual RPCs
+    // are created. This channel models a connection to an endpoint (in this case,
+    // localhost at port 50051). We indicate that the channel isn't authenticated
+    // (use of InsecureChannelCredentials()).
 
-  std::string hostname = "localhost";
-  std::string username = "default";
-  std::string port = "3055";
-  std::string messages = "10000";
-  std::string usec = "n";
-  int opt = 0;
-  while ((opt = getopt(argc, argv, "h:u:p:m:t:")) != -1){
-    switch(opt) {
-      case 'h':
-	  hostname = optarg;break;
-      case 'u':
-          username = optarg;break;
-      case 'p':
-          port = optarg;break;
-	  case 'm':
-		  messages = optarg;break;
-	  case 't':
-		  usec = optarg;break;
-      default: 
-	  std::cerr << "Invalid Command Line Argument\n";
+    string hostname = "localhost";
+    string username = "default";
+    
+    string port = "3055";
+    string messages = "10000";
+    string usec = "n";
+    int opt = 0;
+    
+    while ((opt = getopt(argc, argv, "h:u:p:m:t:")) != -1){
+        switch(opt) {
+            case 'h':
+                hostname = optarg;
+                break;
+            case 'u':
+                username = optarg;
+                break;
+            case 'p':
+                port = optarg;
+                break;
+            case 'm':
+                messages = optarg;
+                break;
+            case 't':
+                usec = optarg;
+                break;
+            default: 
+                cerr << "Invalid Command Line Argument\n";
+        }
     }
-  }
 
-  std::string login_info = hostname + ":" + port;
+    string login_info = hostname + ":" + port;
 
-  //Create the messenger client with the login info
-  MessengerClient *messenger = new MessengerClient(grpc::CreateChannel(
+    //Create the messenger client with the login info
+    MessengerClient *messenger = new MessengerClient(grpc::CreateChannel(
         login_info, grpc::InsecureChannelCredentials())); 
-  //Call the login stub function
-  std::string response = messenger->Login(username);
-  //If the username already exists, exit the client
-  if(response == "Invalid Username"){
-    std::cout << "Invalid Username -- please log in with a different username \n";
-    return 0;
-  }
-  else{
-    std::cout << response << std::endl;
-   
-    std::cout << "Enter commands: \n";
-    std::string input;
-    //While loop that parses all of the command input
-    while(getline(std::cin, input)){
-      //If we have switched to chat mode, parse_input returns 1
-      if(parse_input(messenger, username, input) == 1)
-	break;
+    
+    //Call the login stub function
+    string response = messenger->Login(username);
+    
+    //If the username already exists, exit the client
+    if(response == "Invalid Username") {
+        cout << "Invalid Username -- please log in with a different username \n";
+        return 0;
     }
-    //Once chat mode is enabled, call Chat stub function and read input
-    messenger->Chat(username, messages, usec);
-  }
-  return 0;
+    else {
+        cout << response << endl;
+
+        cout << "Enter commands: \n";
+        string input;
+        
+        //While loop that parses all of the command input
+        while(getline(cin, input)) {
+            //If we have switched to chat mode, parse_input returns 1
+            if(parse_input(messenger, username, input) == 1) {
+                break;
+            }
+        }
+        //Once chat mode is enabled, call Chat stub function and read input
+        messenger->Chat(username, messages, usec);
+    }
+    return 0;
 }
