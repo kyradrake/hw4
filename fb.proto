@@ -40,6 +40,7 @@ service MessengerServer {
   rpc List (Request) returns (ListReply) {}
   rpc Join (Request) returns (Reply) {}
   rpc Leave (Request) returns (Reply) {}
+  rpc StartChatting (Request) returns (Reply) {}
   // Bidirectional streaming RPC
   rpc Chat (stream Message) returns (stream Message) {} 
 }
