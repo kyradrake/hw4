@@ -33,30 +33,54 @@ package hw4;
 
 import "google/protobuf/timestamp.proto";
 
-// The messenger service definition.
+// The service definition for the master process
+service MessengerMaster {
+    rpc Login (Request) returns (Reply) {}
+    rpc List (Request) returns (ListReply) {}
+    rpc Join (Request) returns (Reply) {}
+    rpc Leave (Request) returns (Reply) {}
+
+    // Client has entered chat mode, master replies the address for the primary worker
+    rpc StartChatMode (Request) returns (Reply) {}
+}
+
+// The service definition for the server processes
 service MessengerServer {
 
-  rpc Login (Request) returns (Reply) {}
-  rpc List (Request) returns (ListReply) {}
-  rpc Join (Request) returns (Reply) {}
-  rpc Leave (Request) returns (Reply) {}
-  rpc StartChatting (Request) returns (Reply) {}
-  // Bidirectional streaming RPC
-  rpc Chat (stream Message) returns (stream Message) {} 
+    // Master requests the server to start a new worker process
+    rpc CreateWorker (Request) returns (Reply) {}
+
+    // "Heartbeat" - make sure all workers are active
+    rpc CheckWorkers (Request) returns (Reply) {}
+
+    // Returns the primary worker - the worker with least clients connected
+    rpc FindPrimaryWorker (Request) returns (Reply) {}
+
+    // Connects the client to the specified server
+    rpc Connect (Request) returns (Reply) {}
+}
+
+// The service definition for the worker processes
+service MessengerWorker {
+    // Client sends chats to worker
+    rpc Chat (stream Message) returns (stream Message) {}
+    
+    // Chat communication between workers for file management cross server
+    rpc Worker (stream Message) returns (stream Message) {}
 }
 
 message ListReply {
-  repeated string all_rooms = 1;
-  repeated string joined_rooms = 2;
+    repeated string all_rooms = 1;
+    repeated string joined_rooms = 2;
 }
 
 message Request {
-  string username = 1;
-  repeated string arguments = 2;
+    string username = 1;
+    repeated string arguments = 2;
 }
 
 message Reply {
-  string msg = 1;
+    string msg = 1;
 }
 
 message Message {
