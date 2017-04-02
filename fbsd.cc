@@ -82,8 +82,21 @@ struct Client {
     }
 };
 
+//Worker struct that maintains all the workers on a server
+struct Worker {
+    string worker_address;
+    int clients_connected;
+}
+
 //Vector that stores every client that has been created
 vector<Client> client_db;
+vector<Worker> worker_db;
+
+string master_address = "";
+
+//Boolean to determine if the server is the master
+//default is set to true
+bool isMaster = true;
 
 //Helper function used to find a Client object given its username
 int find_user(string username){
@@ -97,178 +110,60 @@ int find_user(string username){
     return -1;
 }
 
-// Logic and data behind the server's behavior.
-class MessengerServiceImpl final : public MessengerServer::Service {
-  
-    //Sends the list of total rooms and joined rooms to the client
-    Status List(ServerContext* context, const Request* request, ListReply* list_reply) override {
-        Client user = client_db[find_user(request->username())];
-        int index = 0;
-        for(Client c : client_db){
-            list_reply->add_all_rooms(c.username);
-        }
-        vector<Client*>::const_iterator it;
-        for(it = user.client_following.begin(); it!=user.client_following.end(); it++){
-            list_reply->add_joined_rooms((*it)->username);
-        }
-        return Status::OK;
+class MessengerServiceServer final : public MessengerServer::Service {
+    
+    // Master requests the server to start a new worker process
+    // Server creates a new worker process and sends the data back to the master
+    // master process -> server process
+    Status CreateWorker(ServerContext* context, const Request* request, Reply* reply) override {
+        // TO DO --------------------------------------------------------
+        cout << "Creating a Worker\n";
+        
+        return Status::OK; 
     }
 
-    //Sets user1 as following user2
-    Status Join(ServerContext* context, const Request* request, Reply* reply) override {
-        string username1 = request->username();
-        string username2 = request->arguments(0);
-        int join_index = find_user(username2);
+    // "Heartbeat" - make sure all workers are active
+    // Master requests the server to periodically check all master processes
+    // Server returns to master the address of any nonresponsive workers
+    // master process -> server process
+    Status CheckWorkers(ServerContext* context, const Request* request, Reply* reply) override {
+        // TO DO --------------------------------------------------------
+        cout << "Checking all Workers\n";
         
-        //If you try to join a non-existent client or yourself, send failure message
-        if(join_index < 0 || username1 == username2){
-            reply->set_msg("Join Failed -- Invalid Username");
+        return Status::OK; 
+    }
+    
+    // Returns the primary worker - the worker with least clients connected
+    // Master requests the server to return the address of the primary worker
+    // master process -> server process
+    Status FindPrimaryWorker(ServerContext* context, const Request* request, Reply* reply) override {
+        // TO DO --------------------------------------------------------
+        cout << "Finding Primary Worker\n";
+        
+        return Status::OK; 
+    }
+
+    // Connects the client to the specified server
+    // Client initally connects to a known server address
+    // Server replies with address of the master process
+    // client process -> server process
+    Status Connect(ServerContext* context, const Request* request, Reply* reply) override {
+        cout << "Client Connecting\n";
+        if (isMaster) {
+            reply->set_msg(master_address);
         }
-        else{
-            Client *user1 = &client_db[find_user(username1)];
-            Client *user2 = &client_db[join_index];
-            
-            //If user1 is following user2, send failure message
-            if(find(user1->client_following.begin(), user1->client_following.end(), user2) != user1->client_following.end()){
-                reply->set_msg("Join Failed -- Already Following User");
-                return Status::OK;
-            }
-            user1->client_following.push_back(user2);
-            user2->client_followers.push_back(user1);
-            reply->set_msg("Join Successful");
+        else {
+            // TO DO -------------------------------------------------------- 
+            reply->set_msg("I'm not master, fix later");
         }
         return Status::OK; 
     }
 
-    //Sets user1 as no longer following user2
-    Status Leave(ServerContext* context, const Request* request, Reply* reply) override {
-        string username1 = request->username();
-        string username2 = request->arguments(0);
-        int leave_index = find_user(username2);
-        
-        //If you try to leave a non-existent client or yourself, send failure message
-        if(leave_index < 0 || username1 == username2){
-            reply->set_msg("Leave Failed -- Invalid Username");
-        }
-        else{
-            Client *user1 = &client_db[find_user(username1)];
-            Client *user2 = &client_db[leave_index];
-            
-            //If user1 isn't following user2, send failure message
-            if(find(user1->client_following.begin(), user1->client_following.end(), user2) == user1->client_following.end()){
-                reply->set_msg("Leave Failed -- Not Following User");
-                return Status::OK;
-            }
-            
-            // find the user2 in user1 following and remove
-            user1->client_following.erase(find(user1->client_following.begin(), user1->client_following.end(), user2)); 
-            
-            // find the user1 in user2 followers and remove
-            user2->client_followers.erase(find(user2->client_followers.begin(), user2->client_followers.end(), user1));
-            reply->set_msg("Leave Successful");
-        }
-        return Status::OK;
-    }
-
-    //Called when the client startd and checks whether their username is taken or not
-    Status Login(ServerContext* context, const Request* request, Reply* reply) override {
-        Client c;
-        string username = request->username();
-        int user_index = find_user(username);
-        if(user_index < 0){
-            c.username = username;
-            client_db.push_back(c);
-            reply->set_msg("Login Successful!");
-        }
-        else{ 
-            Client *user = &client_db[user_index];
-        if(user->connected) {
-            reply->set_msg("Invalid Username");
-        }
-        else{
-            string msg = "Welcome Back " + user->username;
-            reply->set_msg(msg);
-            user->connected = true;
-        }
-        return Status::OK;
-    }
-
-    Status Chat(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
-        Message message;
-        Client *c;
-        //Read messages until the client disconnects
-        while(stream->Read(&message)) {
-            string username = message.username();
-            int user_index = find_user(username);
-            c = &client_db[user_index];
-            
-            //Write the current message to "username.txt"
-            string filename = username+".txt";
-            ofstream user_file(filename,ios::app|ios::out|ios::in);
-            google::protobuf::Timestamp temptime = message.timestamp();
-            string time = google::protobuf::util::TimeUtil::ToString(temptime);
-            string fileinput = time+" :: "+message.username()+":"+message.msg()+"\n";
-            
-            //"Set Stream" is the default message from the client to initialize the stream
-            if(message.msg() != "Set Stream")
-                user_file << fileinput;
-            
-            //If message = "Set Stream", print the first 20 chats from the people you follow
-            else{
-                if(c->stream==0)
-                    c->stream = stream;
-                string line;
-                vector<string> newest_twenty;
-                ifstream in(username+"following.txt");
-                int count = 0;
-                
-                //Read the last up-to-20 lines (newest 20 messages) from userfollowing.txt
-                while(getline(in, line)){
-                    if(c->following_file_size > 20){
-                        if(count < c->following_file_size-20){
-                            count++;
-                            continue;
-                        }
-                    }
-                    newest_twenty.push_back(line);
-                }
-                
-                Message new_msg; 
-                //Send the newest messages to the client to be displayed
-                for(int i = 0; i<newest_twenty.size(); i++){
-                    new_msg.set_msg(newest_twenty[i]);
-                    stream->Write(new_msg);
-                }    
-                continue;
-            }
-            
-            //Send the message to each follower's stream
-            vector<Client*>::const_iterator it;
-            for(it = c->client_followers.begin(); it!=c->client_followers.end(); it++){
-                Client *temp_client = *it;
-                if(temp_client->stream!=0 && temp_client->connected)
-                    temp_client->stream->Write(message);
-                
-                //For each of the current user's followers, put the message in their following.txt file
-                string temp_username = temp_client->username;
-                string temp_file = temp_username + "following.txt";
-                ofstream following_file(temp_file,ios::app|ios::out|ios::in);
-                following_file << fileinput;
-                temp_client->following_file_size++;
-                ofstream user_file(temp_username + ".txt",ios::app|ios::out|ios::in);
-                user_file << fileinput;
-            }
-        }
-        
-        //If the client disconnected from Chat Mode, set connected to false
-        c->connected = false;
-        return Status::OK;
-    }
-};
+}
 
 void RunServer(string port_no) {
     string server_address = "0.0.0.0:"+port_no;
-    MessengerServiceImpl service;
+    MessengerServiceServer service;
 
     ServerBuilder builder;
     // Listen on the given address without any authentication mechanism.
@@ -296,11 +191,43 @@ int main(int argc, char** argv) {
             case 'p':
                 port = optarg;
                 break;
+            case 'm':
+                isMaster = optarg;
+                break;
             default:
                 cerr << "Invalid Command Line Argument\n";
         }
     }
+    
+    // start server service on given port number
     RunServer(port);
+    
+    // if server is master, start master process
+    // start 2 master replica processes, and 1 worker process
+    if (isMaster) {
+        // start master process
+        master_address = "0.0.0.0:3056";
+        execl("./master", master_address, 0);
+        
+        cout << "starting master process\n";
+        
+        // start 1 worker process
+        string worker_address = "0.0.0.0:3057";
+        
+        Worker w;
+        w.worker_address = worker_address;
+        w.clients_connected = 0;
+        
+        execl("./worker", worker_address, 0);
+        
+        cout << "starting worker process\n";
+    }
+    else {
+        // TO DO -------------------------------------------------------- 
+        // find master process
+        master_address = "do this later";
+        cout << "not master process, doing something else\n";
+    }
 
     return 0;
 }
