@@ -58,6 +58,8 @@ using hw4::ListReply;
 using hw4::Request;
 using hw4::Reply;
 using hw4::MessengerServer;
+using hw4::MessengerMaster;
+using hw4::MessengerWorker;
 
 using namespace std;
 
@@ -76,11 +78,44 @@ Message MakeMessage(const std::string& username, const std::string& msg) {
 
 class MessengerClient {
     public:
-    MessengerClient(shared_ptr<Channel> channel)
-        : stub_(MessengerServer::NewStub(channel)) {}
+    
+    MessengerClient(shared_ptr<Channel> channel, string uname){
+        serverStub = MessengerServer::NewStub(channel);
+        username = uname;
+    }
+    
+    void Connect() {
+        //Data being sent to the server
+        Request request;
+        request.set_username(username);
+  
+        //Container for the data from the server
+        Reply reply;
+
+        //Context for the client
+        ClientContext context;
+
+        Status status = serverStub->Connect(&context, request, &reply);
+        
+        if(status.ok()) {
+            cout << reply.msg() << endl;
+            //have received the address for the master stub, initialize master stub and stuffs
+            shared_ptr<Channel> channel = grpc::CreateChannel(reply.msg(), grpc::InsecureChannelCredentials());
+            masterStub = MessengerMaster::NewStub(channel);
+        }
+        else {
+            cout << status.error_code() << ": " << status.error_message() << endl;
+        }
+    }
 
     //Calls the List stub function and prints out room names
-    void List(const std::string& username) {
+    void List() {
+        
+        if(masterStub == null){
+            cout << "Master service has not been initialized." << endl;
+            return;
+        }
+        
         //Data being sent to the server
         Request request;
         request.set_username(username);
@@ -91,7 +126,7 @@ class MessengerClient {
         //Context for the client
         ClientContext context;
 
-        Status status = stub_->List(&context, request, &list_reply);
+        Status status = masterStub->List(&context, request, &list_reply);
 
         //Loop through list_reply.all_rooms and list_reply.joined_rooms
         //Print out the name of each room 
@@ -102,7 +137,7 @@ class MessengerClient {
             }
             cout << "Following: \n";
             for(string s : list_reply.joined_rooms()) {
-                cout << s << endl;;
+                cout << s << endl;
             }
         }
         else {
@@ -112,11 +147,17 @@ class MessengerClient {
     }
 
     //Calls the Join stub function and makes user1 follow user2
-    void Join(const string& username1, const string& username2) {
+    void Join(const string& username2) {
+        
+        if(masterStub == null){
+            cout << "Master service has not been initialized." << endl;
+            return;
+        }
+        
         Request request;
         
         //username1 is the person joining the chatroom
-        request.set_username(username1);
+        request.set_username(username);
         
         //username2 is the name of the room we're joining
         request.add_arguments(username2);
@@ -125,10 +166,10 @@ class MessengerClient {
 
         ClientContext context;
 
-        Status status = stub_->Join(&context, request, &reply);
+        Status status = masterStub->Join(&context, request, &reply);
 
         if(status.ok()) {
-            cout << reply.msg() << std::endl;
+            cout << reply.msg() << endl;
         }
         else {
             cout << status.error_code() << ": " << status.error_message()
@@ -138,17 +179,23 @@ class MessengerClient {
     }
 
     //Calls the Leave stub function and makes user1 no longer follow user2
-    void Leave(const string& username1, const string& username2) {
+    void Leave(const string& username2) {
+        
+        if(masterStub == null){
+            cout << "Master service has not been initialized." << endl;
+            return;
+        }
+        
         Request request;
       
-        request.set_username(username1);
+        request.set_username(username);
         request.add_arguments(username2);
       
         Reply reply;
       
         ClientContext context;
       
-        Status status = stub_->Leave(&context, request, &reply);
+        Status status = masterStub->Leave(&context, request, &reply);
       
         if(status.ok()) {
             cout << reply.msg() << endl;
@@ -161,7 +208,13 @@ class MessengerClient {
     }
 
     //Called when a client is run
-    string Login(const std::string& username){
+    string Login(){
+        
+        if(masterStub == null){
+            cout << "Master service has not been initialized." << endl;
+            return;
+        }
+        
         Request request;
 
         request.set_username(username);
@@ -170,7 +223,7 @@ class MessengerClient {
 
         ClientContext context;
 
-        Status status = stub_->Login(&context, request, &reply);
+        Status status = masterStub->Login(&context, request, &reply);
 
         if(status.ok()) {
             return reply.msg();
@@ -181,28 +234,64 @@ class MessengerClient {
             return "RPC failed";
         }
     }
+    
+    //Server going to return the host to connect to, disconnect from master, connect to worker
+    void StartChatMode(){
+        
+        if(masterStub == null){
+            cout << "Master service has not been initialized." << endl;
+            return;
+        }
+        
+        Request request;
+
+        request.set_username(username);
+
+        Reply reply;
+
+        ClientContext context;
+
+        Status status = masterStub->StartChatMode(&context, request, &reply);
+
+        if(status.ok()) {
+            cout << reply.msg() << endl;
+            //have received the address for the master stub, initialize master stub and stuffs
+            shared_ptr<Channel> channel = grpc::CreateChannel(reply.msg(), grpc::InsecureChannelCredentials());
+            workerStub = MessengerWorker::NewStub(channel);
+        }
+        else {
+            cout << status.error_code() << ": " << status.error_message() << endl;
+            return "RPC failed";
+        }
+    }
 
     //Calls the Chat stub function which uses a bidirectional RPC to communicate
-    void Chat (const string& username, const string& messages, const string& usec) {
-    ClientContext context;
+    void Chat (const string& messages, const string& usec) {
+        
+        if(workerStub == null){
+            cout << "Worker service has not been initialized." << endl;
+            return;
+        }
+        
+        ClientContext context;
 
-        shared_ptr<ClientReaderWriter<Message, Message>> stream(
-        stub_->Chat(&context));
+        shared_ptr<ClientReaderWriter<Message, Message>> stream(workerStub->Chat(&context));
 
         //Thread used to read chat messages and send them to the server
         thread writer([username, messages, usec, stream]() {  
-            if(usec == "n") { 
-                string input = "Set Stream";
-                
-                Message m = MakeMessage(username, input);
+            //if(usec == "n") { 
+            string input = "Set Stream";
+
+            Message m = MakeMessage(username, input);
+            stream->Write(m);
+
+            cout << "Enter chat messages: \n";
+            while(getline(cin, input)) {
+                m = MakeMessage(username, input);
                 stream->Write(m);
-                
-                cout << "Enter chat messages: \n";
-                while(getline(cin, input)) {
-                    m = MakeMessage(username, input);
-                    stream->Write(m);
-                }
-                stream->WritesDone();
+            }
+            stream->WritesDone();
+            /*
             }
             else {
                 string input = "Set Stream";
@@ -229,6 +318,7 @@ class MessengerClient {
                 time(&end);
                 cout << "Elapsed time: " << (double)difftime(end,start) << endl;
                 stream->WritesDone();
+                */
             }
         });
 
@@ -246,7 +336,10 @@ class MessengerClient {
     }
 
     private:
-    unique_ptr<MessengerServer::Stub> stub_;
+    string username;
+    unique_ptr<MessengerServer::Stub> serverStub;
+    unique_ptr<MessengerMaster::Stub> masterStub;
+    unique_ptr<MessengerWorker::Stub> workerStub;
 };
 
 //Parses user input while the client is in Command Mode
@@ -268,10 +361,10 @@ int parse_input(MessengerClient* messenger, string username, string input){
         string argument = input.substr(index+1, (input.length()-index));
         
         if(cmd == "JOIN") {
-            messenger->Join(username, argument);
+            messenger->Join(argument);
         }
         else if(cmd == "LEAVE") {
-            messenger->Leave(username, argument);
+            messenger->Leave(argument);
         }
         else {
             cout << "Invalid Command\n";
@@ -280,10 +373,10 @@ int parse_input(MessengerClient* messenger, string username, string input){
     }
     else {
         if(input == "LIST") {
-            messenger->List(username); 
+            messenger->List(); 
         }
         else if(input == "CHAT") {
-            //Switch to chat mode
+            //Send a request to the master to connect to a worker for chatting
             return 1;
         }
         else {
@@ -330,14 +423,14 @@ int main(int argc, char** argv) {
         }
     }
 
-    string login_info = hostname + ":" + port;
+    string serverInfo = hostname + ":" + port;
 
     //Create the messenger client with the login info
-    MessengerClient *messenger = new MessengerClient(grpc::CreateChannel(
-        login_info, grpc::InsecureChannelCredentials())); 
+    shared_ptr<Channel> channel = grpc::CreateChannel(serverInfo, grpc::InsecureChannelCredentials());
+    MessengerClient *messenger = new MessengerClient(channel, username);
     
     //Call the login stub function
-    string response = messenger->Login(username);
+    string response = messenger->Login();
     
     //If the username already exists, exit the client
     if(response == "Invalid Username") {
@@ -358,7 +451,8 @@ int main(int argc, char** argv) {
             }
         }
         //Once chat mode is enabled, call Chat stub function and read input
-        messenger->Chat(username, messages, usec);
+        messenger->StartChatMode();
+        messenger->Chat(messages, usec);
     }
     return 0;
 }
