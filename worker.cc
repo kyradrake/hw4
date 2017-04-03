@@ -157,6 +157,13 @@ class MessengerServiceImpl final : public MessengerServer::Service {
         c->connected = false;
         return Status::OK;
     }
+    
+    Status Worker(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
+        workerPort = reply.msg();
+        //figure out how to actually send the chat messages simultaneously with the chat function
+        return Status::OK; 
+    }
+    
 };
 
 void RunWorker(string port_no) {
