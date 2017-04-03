@@ -196,6 +196,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         }
         */
         
+        reply->set_msg("Starting Chat Mode");
+        
     }
         
 
