@@ -227,7 +227,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         if (worker_db.size() == 0) {
             cout << "Error: No workers in the worker database." << endl;
-            return Status::BAD;
+            return Status::OK;
         }
         
         for (Worker w: worker_db) {
@@ -318,7 +318,33 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
     */
 };
 
+void RunMaster(string address) {
+    string master_address = address;
+    MessengerServiceMaster service;
+
+    ServerBuilder builder;
+    // Listen on the given address without any authentication mechanism.
+    builder.AddListeningPort(master_address, grpc::InsecureServerCredentials());
+    
+    // Register "service" as the instance through which we'll communicate with
+    // clients. In this case it corresponds to an *synchronous* service.
+    builder.RegisterService(&service);
+    
+    // Finally assemble the server.
+    unique_ptr<Server> master(builder.BuildAndStart());
+    cout << "Master listening on " << master_address << endl;
+    
+    cout << "\n\n";
+
+    // Wait for the server to shutdown. Note that some other thread must be
+    // responsible for shutting down the server for this call to ever return.
+    master->Wait();
+}
+
 int main(int argc, char** argv) {
-    cout << "What's the main supposed to do?!\n";
+    cout << "\n\n";
+    cout << "Starting Master\n";
+    
+    RunMaster(argv[0]);
     return 0;
 }

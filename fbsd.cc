@@ -150,6 +150,7 @@ class MessengerServiceServer final : public MessengerServer::Service {
     Status Connect(ServerContext* context, const Request* request, Reply* reply) override {
         cout << "Client Connecting\n";
         if (isMaster) {
+            cout << "Redirecting client to " << master_address << endl;
             reply->set_msg(master_address);
         }
         else {
@@ -176,6 +177,39 @@ void RunServer(string port_no) {
     // Finally assemble the server.
     unique_ptr<Server> server(builder.BuildAndStart());
     cout << "Server listening on " << server_address << endl;
+    
+    
+    
+    isMaster = true;
+    
+    // if server is master, start master process
+    // start 2 master replica processes, and 1 worker process
+    if (isMaster) {
+        // start master process
+        master_address = "0.0.0.0:3056";
+        cout << "Here\n";
+        execl("./master", master_address.c_str(), 0);
+        cout << "Master listening on " << master_address << endl;
+        
+        // start 1 worker process
+        string worker_address = "0.0.0.0:3057";
+        
+        Worker w;
+        w.worker_address = worker_address;
+        w.clients_connected = 0;
+        
+        execl("./worker", worker_address.c_str(), 0);
+        cout << "Worker listening on " << worker_address << endl;
+        
+    }
+    else {
+        // TO DO -------------------------------------------------------- 
+        // find master process
+        master_address = "do this later";
+        cout << "not master process, doing something else\n";
+    }
+    
+    
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
@@ -205,32 +239,7 @@ int main(int argc, char** argv) {
     // DELETE LATER
     isMaster = true;
     
-    // if server is master, start master process
-    // start 2 master replica processes, and 1 worker process
-    if (isMaster) {
-        // start master process
-        master_address = "0.0.0.0:3056";
-        execl("./master", master_address.c_str(), 0);
-        
-        cout << "starting master process\n";
-        
-        // start 1 worker process
-        string worker_address = "0.0.0.0:3057";
-        
-        Worker w;
-        w.worker_address = worker_address;
-        w.clients_connected = 0;
-        
-        execl("./worker", worker_address.c_str(), 0);
-        
-        cout << "starting worker process\n";
-    }
-    else {
-        // TO DO -------------------------------------------------------- 
-        // find master process
-        master_address = "do this later";
-        cout << "not master process, doing something else\n";
-    }
+    
 
     return 0;
 }

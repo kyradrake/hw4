@@ -85,6 +85,7 @@ class MessengerClient {
     }
     
     void Connect() {
+        
         //Data being sent to the server
         Request request;
         request.set_username(username);
@@ -431,7 +432,12 @@ int main(int argc, char** argv) {
     shared_ptr<Channel> channel = grpc::CreateChannel(serverInfo, grpc::InsecureChannelCredentials());
     MessengerClient *messenger = new MessengerClient(channel, username);
     
+    //Connect to Master
+    cout << "Connecting to Master\n";
+    messenger->Connect();
+    
     //Call the login stub function
+    cout << "Logging into Messenger Service\n";
     string response = messenger->Login();
     
     //If the username already exists, exit the client
