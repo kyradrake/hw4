@@ -98,14 +98,29 @@ class MessengerClient {
 
         Status status = serverStub->Connect(&context, request, &reply);
         
+        
+        /*
+            THIS IS FAILING
+            IT RETURNS ERROR:14 WHICH IS "CONNECTION UNAVAILABLE"
+            FOR THIS REASON IT SKIPS TO THE ELSE STATEMENT
+            
+            ACCORDING TO PRINT STATEMENTS, THE CLIENT/SERVER SEEM TO BE ON SAME HOST/PORT
+            DEBUG LATER
+        
+        */
+        
+        
+        
         if(status.ok()) {
             cout << reply.msg() << endl;
             //have received the address for the master stub, initialize master stub and stuffs
             shared_ptr<Channel> channel = grpc::CreateChannel(reply.msg(), grpc::InsecureChannelCredentials());
             masterStub = MessengerMaster::NewStub(channel);
+            
+            cout << "Connecting to Master on Address: " << reply.msg() << endl;
         }
         else {
-            cout << status.error_code() << ": " << status.error_message() << endl;
+            cout << "Error: " << status.error_code() << ": " << status.error_message() << endl;
         }
     }
 
@@ -396,7 +411,7 @@ int main(int argc, char** argv) {
     // localhost at port 50051). We indicate that the channel isn't authenticated
     // (use of InsecureChannelCredentials()).
 
-    string hostname = "localhost";
+    string hostname = "0.0.0.0";
     string username = "default";
     
     string port = "3055";
@@ -427,6 +442,8 @@ int main(int argc, char** argv) {
     }
 
     string serverInfo = hostname + ":" + port;
+    
+    cout << "Connecting to Server at " << serverInfo << endl;
 
     //Create the messenger client with the login info
     shared_ptr<Channel> channel = grpc::CreateChannel(serverInfo, grpc::InsecureChannelCredentials());
@@ -437,7 +454,7 @@ int main(int argc, char** argv) {
     messenger->Connect();
     
     //Call the login stub function
-    cout << "Logging into Messenger Service\n";
+    cout << "\nLogging into Messenger Service\n";
     string response = messenger->Login();
     
     //If the username already exists, exit the client

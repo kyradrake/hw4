@@ -179,7 +179,7 @@ void RunServer(string port_no) {
     cout << "Server listening on " << server_address << endl;
     
     
-    
+    // DELETE LATER
     isMaster = true;
     
     // if server is master, start master process
@@ -187,19 +187,21 @@ void RunServer(string port_no) {
     if (isMaster) {
         // start master process
         master_address = "0.0.0.0:3056";
-        cout << "Here\n";
         execl("./master", master_address.c_str(), 0);
         cout << "Master listening on " << master_address << endl;
         
         // start 1 worker process
         string worker_address = "0.0.0.0:3057";
         
+        /*
         Worker w;
         w.worker_address = worker_address;
         w.clients_connected = 0;
         
         execl("./worker", worker_address.c_str(), 0);
         cout << "Worker listening on " << worker_address << endl;
+        
+        */
         
     }
     else {
@@ -236,8 +238,7 @@ int main(int argc, char** argv) {
     // start server service on given port number
     RunServer(port);
     
-    // DELETE LATER
-    isMaster = true;
+    
     
     
 
