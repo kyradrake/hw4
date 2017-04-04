@@ -89,6 +89,10 @@ message Reply {
     string msg = 1;
 }
 
+message WorkerRequest {
+    string address = 1;
+}
+
 message Message {
   //Username who sent the message
   string username = 1;
