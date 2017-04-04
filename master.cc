@@ -82,8 +82,18 @@ struct Client {
     }
 };
 
+//Worker struct
+struct Worker {
+    string hostname;
+    string portnumber;
+    int numClientsConnected; //don't care about primary/secondary clients right now, fix later
+};
+
 //Vector that stores every client that has been created
 vector<Client> client_db;
+
+//Vector that stores every worker that has been created
+vector<Worker> worker_db;
 
 //Helper function used to find a Client object given its username
 int find_user(string username){
@@ -211,20 +221,24 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Forget about secondary workers for now
         
         */
-        /*
-        int min_clients_connected;
+        
+        int min_clients_connected = 999999;
         string worker_address = "";
         
         if (worker_db.size() == 0) {
-            
+            cout << "Error: No workers in the worker database." << endl;
+            return Status::BAD;
         }
         
         for (Worker w: worker_db) {
-            if (w.clients_connect <= min_clients_connecte)
+            if (w.numClientsConnected < min_clients_connected) {
+                worker_address = w.hostname + ":" + w.portnumber; //I think this is the correct syntax
+                min_clients_connected = w.numClientsConnected;
+            }
         }
-        */
         
-        reply->set_msg("Starting Chat Mode");
+        reply->set_msg(worker_address);
+        return Status::OK;
         
     }
         
