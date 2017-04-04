@@ -85,6 +85,10 @@ class MessengerClient {
     }
     
     void Connect() {
+        if(serverStub == NULL){
+            cout << "Server service has not been initialized." << endl;
+            return;
+        }
         
         //Data being sent to the server
         Request request;

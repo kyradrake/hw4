@@ -177,35 +177,39 @@ class MessengerServiceImpl final : public MessengerWorker::Service {
         return Status::OK; 
     }
     
-    // Sends request from worker to server to initialize worker on the master
-    void WorkerInitialize(string workerAddress) {
-        
-        if(serverStub == NULL){
-            cout << "Server has not been initialized." << endl;
-            return;
-        }
-        
-        WorkerRequest request;
-      
-        request.set_address(workerAddress);
-      
-        Reply reply;
-      
-        ClientContext context;
-      
-        Status status = serverStub->WorkerInitialize(&context, request, &reply);
-      
-        if(status.ok()) {
-            cout << reply.msg() << endl;
-        }
-        else {
-            cout << status.error_code() << ": " << status.error_message()
-                << endl;
-            cout << "RPC failed\n";
-        }
-    }
+    
     
 };
+
+// Sends request from worker to server to initialize worker on the master
+/*
+void WorkerInitialize(string workerAddress) {
+
+    if(v  == NULL){
+        cout << "Server has not been initialized." << endl;
+        return;
+    }
+
+    WorkerRequest request;
+
+    request.set_address(workerAddress);
+
+    Reply reply;
+
+    ClientContext context;
+
+    Status status = serverStub->WorkerInitialize(&context, request, &reply);
+
+    if(status.ok()) {
+        cout << reply.msg() << endl;
+    }
+    else {
+        cout << status.error_code() << ": " << status.error_message()
+            << endl;
+        cout << "RPC failed\n";
+    }
+}
+*/
 
 void RunWorker(string port_no) {
     string worker_address = "0.0.0.0:"+port_no;
@@ -224,7 +228,7 @@ void RunWorker(string port_no) {
     cout << "Server listening on " << worker_address << endl;
     
     //Initialzie worker on server to master right here, MAY NOT BE THE RIGHT SPOT
-    worker->WorkerInitialize(worker_address);
+    //worker->WorkerInitialize(worker_address);
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.

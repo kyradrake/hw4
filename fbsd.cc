@@ -187,12 +187,18 @@ void RunServer(string port_no) {
     if (isMaster) {
         // start master process
         master_address = "0.0.0.0:3056";
-        execl("./master", master_address.c_str(), 0);
+        string exec_master = "./master " + master_address;
+        system(exec_master.c_str());
         cout << "Master listening on " << master_address << endl;
         
         // start 1 worker process
         string worker_address = "0.0.0.0:3057";
         
+        /*
+        master_address = "0.0.0.0:3057";
+        execl("./master", master_address.c_str(), 0);
+        cout << "Master listening on " << master_address << endl;
+        */
         /*
         Worker w;
         w.worker_address = worker_address;

@@ -345,6 +345,6 @@ int main(int argc, char** argv) {
     cout << "\n\n";
     cout << "Starting Master\n";
     
-    RunMaster(argv[0]);
+    RunMaster(argv[1]);
     return 0;
 }
