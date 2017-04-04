@@ -69,6 +69,34 @@ using hw4::MessengerMaster;
 
 using namespace std;
 
+//Client struct that holds a user's username, followers, and users they follow
+struct Client {
+    string username;
+    bool connected = true;
+    int following_file_size = 0;
+    vector<Client*> client_followers;
+    vector<Client*> client_following;
+    ServerReaderWriter<Message, Message>* stream = 0;
+    bool operator==(const Client& c1) const{
+        return (username == c1.username);
+    }
+};
+
+//Vector that stores every client that has been created
+vector<Client> client_db;
+
+//Helper function used to find a Client object given its username
+int find_user(string username){
+    int index = 0;
+    for(Client c : client_db){
+        if(c.username == username){
+            return index;
+        }
+        index++;
+    }
+    return -1;
+}
+
 // Logic and data behind the server's behavior.
 class MessengerServiceMaster final : public MessengerMaster::Service {
   
@@ -275,3 +303,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
     }
     */
 };
+
+int main(int argc, char** argv) {
+    cout << "What's the main supposed to do?!\n";
+    return 0;
+}

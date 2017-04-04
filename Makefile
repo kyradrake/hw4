@@ -39,12 +39,18 @@ PROTOC = protoc
 GRPC_CPP_PLUGIN = grpc_cpp_plugin
 GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`
 
-all: system-check fbc fbsd
+all: system-check fbc fbsd worker master
 
 fbc: fb.pb.o fb.grpc.pb.o fbc.o
 	$(CXX) $^ $(LDFLAGS) -g -o $@
 
 fbsd: fb.pb.o fb.grpc.pb.o fbsd.o
+	$(CXX) $^ $(LDFLAGS) -g -o $@
+    
+worker: fb.pb.o fb.grpc.pb.o worker.o
+	$(CXX) $^ $(LDFLAGS) -g -o $@
+    
+master: fb.pb.o fb.grpc.pb.o master.o
 	$(CXX) $^ $(LDFLAGS) -g -o $@
 
 .PRECIOUS: %.grpc.pb.cc
@@ -56,7 +62,7 @@ fbsd: fb.pb.o fb.grpc.pb.o fbsd.o
 	$(PROTOC) --cpp_out=. $<
 
 clean:
-	rm -f *.txt *.o *.pb.cc *.pb.h fbc fbsd
+	rm -f *.txt *.o *.pb.cc *.pb.h fbc fbsd worker master
 
 
 # The following is to test your system and ensure a smoother experience.

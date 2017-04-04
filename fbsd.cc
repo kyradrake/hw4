@@ -86,7 +86,7 @@ struct Client {
 struct Worker {
     string worker_address;
     int clients_connected;
-}
+};
 
 //Vector that stores every client that has been created
 vector<Client> client_db;
@@ -159,7 +159,7 @@ class MessengerServiceServer final : public MessengerServer::Service {
         return Status::OK; 
     }
 
-}
+};
 
 void RunServer(string port_no) {
     string server_address = "0.0.0.0:"+port_no;
@@ -202,12 +202,15 @@ int main(int argc, char** argv) {
     // start server service on given port number
     RunServer(port);
     
+    // DELETE LATER
+    isMaster = true;
+    
     // if server is master, start master process
     // start 2 master replica processes, and 1 worker process
     if (isMaster) {
         // start master process
         master_address = "0.0.0.0:3056";
-        execl("./master", master_address, 0);
+        execl("./master", master_address.c_str(), 0);
         
         cout << "starting master process\n";
         
@@ -218,7 +221,7 @@ int main(int argc, char** argv) {
         w.worker_address = worker_address;
         w.clients_connected = 0;
         
-        execl("./worker", worker_address, 0);
+        execl("./worker", worker_address.c_str(), 0);
         
         cout << "starting worker process\n";
     }

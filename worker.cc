@@ -65,9 +65,22 @@ using hw4::Message;
 using hw4::ListReply;
 using hw4::Request;
 using hw4::Reply;
-using hw4::MessengerServer;
+using hw4::MessengerWorker;
 
 using namespace std;
+
+//Client struct that holds a user's username, followers, and users they follow
+struct Client {
+    string username;
+    bool connected = true;
+    int following_file_size = 0;
+    vector<Client*> client_followers;
+    vector<Client*> client_following;
+    ServerReaderWriter<Message, Message>* stream = 0;
+    bool operator==(const Client& c1) const{
+        return (username == c1.username);
+    }
+};
 
 //Vector that stores every client that has been created
 vector<Client> client_db;
@@ -84,7 +97,7 @@ int find_user(string username){
     return -1;
 }
 
-class MessengerServiceImpl final : public MessengerServer::Service {
+class MessengerServiceImpl final : public MessengerWorker::Service {
 
     Status Chat(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
         Message message;
@@ -159,7 +172,7 @@ class MessengerServiceImpl final : public MessengerServer::Service {
     }
     
     Status Worker(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
-        workerPort = reply.msg();
+        //workerPort = reply.msg();
         //figure out how to actually send the chat messages simultaneously with the chat function
         return Status::OK; 
     }

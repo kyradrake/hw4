@@ -111,7 +111,7 @@ class MessengerClient {
     //Calls the List stub function and prints out room names
     void List() {
         
-        if(masterStub == null){
+        if(masterStub == NULL){
             cout << "Master service has not been initialized." << endl;
             return;
         }
@@ -149,7 +149,7 @@ class MessengerClient {
     //Calls the Join stub function and makes user1 follow user2
     void Join(const string& username2) {
         
-        if(masterStub == null){
+        if(masterStub == NULL){
             cout << "Master service has not been initialized." << endl;
             return;
         }
@@ -181,7 +181,7 @@ class MessengerClient {
     //Calls the Leave stub function and makes user1 no longer follow user2
     void Leave(const string& username2) {
         
-        if(masterStub == null){
+        if(masterStub == NULL){
             cout << "Master service has not been initialized." << endl;
             return;
         }
@@ -210,9 +210,9 @@ class MessengerClient {
     //Called when a client is run
     string Login(){
         
-        if(masterStub == null){
+        if(masterStub == NULL){
             cout << "Master service has not been initialized." << endl;
-            return;
+            return "FAILURE";
         }
         
         Request request;
@@ -238,7 +238,7 @@ class MessengerClient {
     //Server going to return the host to connect to, disconnect from master, connect to worker
     void StartChatMode(){
         
-        if(masterStub == null){
+        if(masterStub == NULL){
             cout << "Master service has not been initialized." << endl;
             return;
         }
@@ -261,14 +261,15 @@ class MessengerClient {
         }
         else {
             cout << status.error_code() << ": " << status.error_message() << endl;
-            return "RPC failed";
+            return;
         }
     }
 
     //Calls the Chat stub function which uses a bidirectional RPC to communicate
     void Chat (const string& messages, const string& usec) {
+        const string& uname = username; 
         
-        if(workerStub == null){
+        if(workerStub == NULL){
             cout << "Worker service has not been initialized." << endl;
             return;
         }
@@ -278,16 +279,16 @@ class MessengerClient {
         shared_ptr<ClientReaderWriter<Message, Message>> stream(workerStub->Chat(&context));
 
         //Thread used to read chat messages and send them to the server
-        thread writer([username, messages, usec, stream]() {  
+        thread writer([uname, messages, usec, stream]() {  
             //if(usec == "n") { 
             string input = "Set Stream";
 
-            Message m = MakeMessage(username, input);
+            Message m = MakeMessage(uname, input);
             stream->Write(m);
 
             cout << "Enter chat messages: \n";
             while(getline(cin, input)) {
-                m = MakeMessage(username, input);
+                m = MakeMessage(uname, input);
                 stream->Write(m);
             }
             stream->WritesDone();
@@ -318,12 +319,13 @@ class MessengerClient {
                 time(&end);
                 cout << "Elapsed time: " << (double)difftime(end,start) << endl;
                 stream->WritesDone();
-                */
+               
             }
+             */
         });
 
         //Thread used to display chat messages from users that this client follows 
-        thread reader([username, stream]() {
+        thread reader([uname, stream]() {
             Message m;
             while(stream->Read(&m)){
                 cout << m.username() << " -- " << m.msg() << endl;
