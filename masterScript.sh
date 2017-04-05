@@ -4,7 +4,7 @@ echo ""
 
 ./fbsd -p 3055 -m true &
 export p1=$!
-./master &
+./master 3055 &
 export p2=$!
 ./worker -p 3056 &
 export p3=$!
