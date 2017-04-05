@@ -191,30 +191,50 @@ void RunServer(string port_no) {
         system(exec_master.c_str());
         cout << "Master listening on " << master_address << endl;
         
-        // start 1 worker process
-        string worker_address = "0.0.0.0:3057";
-        
         /*
         master_address = "0.0.0.0:3057";
         execl("./master", master_address.c_str(), 0);
         cout << "Master listening on " << master_address << endl;
         */
-        /*
+        
+        // start 1 worker process
+        string worker_address = "0.0.0.0:3057";
+        
         Worker w;
         w.worker_address = worker_address;
         w.clients_connected = 0;
         
-        execl("./worker", worker_address.c_str(), 0);
+        string exec_worker = "./worker " + worker_address;
+        system(exec_worker.c_str());
         cout << "Worker listening on " << worker_address << endl;
-        
-        */
         
     }
     else {
         // TO DO -------------------------------------------------------- 
-        // find master process
+        // find master address -- COULD WE HARDCODE THIS AND ALWAYS HAVE THE MASTER ON A CERTAIN PORT?
         master_address = "do this later";
         cout << "not master process, doing something else\n";
+        
+        //start 3 worker processes
+        
+        initial_port = 3057;
+        int num_workers = 0;
+        while(num_workers < 3){
+            string worker_address = "0.0.0.0:" + initial_port;
+        
+            Worker w;
+            w.worker_address = worker_address;
+            w.clients_connected = 0;
+
+            string exec_worker = "./worker " + worker_address;
+            
+            //check to see if port number is available
+            if(0 <= system(exec_worker.c_str())){
+                cout << "Worker listening on " << worker_address << endl;
+                num_workers++;
+            }
+            initial_port++;
+        }
     }
     
     

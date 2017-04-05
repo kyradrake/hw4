@@ -181,34 +181,50 @@ class MessengerServiceImpl final : public MessengerWorker::Service {
     
 };
 
-// Sends request from worker to server to initialize worker on the master
+//I think this is how we want to connect from a worker to a master. If not, I'm still very confused.
+
 /*
-void WorkerInitialize(string workerAddress) {
 
-    if(v  == NULL){
-        cout << "Server has not been initialized." << endl;
-        return;
+class MessengerWorker {
+    public:
+    
+    MessengerWorker(shared_ptr<Channel> channel, string uname){
+        serverStub = MessengerServer::NewStub(channel);
+        username = uname;
     }
+    
+    // Sends request from worker to server to initialize worker struct on the master
+    void WorkerInitialize(string workerAddress) {
 
-    WorkerRequest request;
+        if(v  == NULL){
+            cout << "Server has not been initialized." << endl;
+            return;
+        }
 
-    request.set_address(workerAddress);
+        WorkerRequest request;
 
-    Reply reply;
+        request.set_address(workerAddress);
 
-    ClientContext context;
+        Reply reply;
 
-    Status status = serverStub->WorkerInitialize(&context, request, &reply);
+        ClientContext context;
 
-    if(status.ok()) {
-        cout << reply.msg() << endl;
+        Status status = serverStub->WorkerInitialize(&context, request, &reply);
+
+        if(status.ok()) {
+            cout << reply.msg() << endl;
+        }
+        else {
+            cout << status.error_code() << ": " << status.error_message() << endl;
+            cout << "RPC failed\n";
+        }
     }
-    else {
-        cout << status.error_code() << ": " << status.error_message()
-            << endl;
-        cout << "RPC failed\n";
-    }
-}
+    
+    private:
+    string username;
+    unique_ptr<MessengerServer::Stub> serverStub;
+};
+
 */
 
 void RunWorker(string port_no) {
