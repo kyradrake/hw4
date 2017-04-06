@@ -100,7 +100,6 @@ int find_user(string username){
 class MessengerServiceWorker final : public MessengerWorker::Service {
 
     Status Chat(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
-        /*
         Message message;
         Client *c;
         //Read messages until the client disconnects
@@ -170,7 +169,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         //If the client disconnected from Chat Mode, set connected to false
         c->connected = false;
         return Status::OK;
-        */
+        
     }
     
     Status Worker(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
@@ -229,8 +228,8 @@ class MessengerWorker {
 
 */
 
-void RunWorker(string address) {
-    string worker_address = "0.0.0.0:"+address;
+void RunWorker(string port) {
+    string worker_address = "0.0.0.0:"+port;
     MessengerServiceWorker service;
 
     ServerBuilder builder;

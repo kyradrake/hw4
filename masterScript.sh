@@ -4,8 +4,10 @@
 
 ./fbsd -p 4632 &     #-m true 
 #export p1=$!
-#./worker 4633 
-./master 4633 
+
+./master 4633 &
+
+./worker 4634 
 #export p2=$!
 
 
