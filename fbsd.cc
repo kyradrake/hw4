@@ -93,7 +93,7 @@ struct Worker {
 vector<Client> client_db;
 vector<Worker> worker_db;
 
-string master_address = "";
+string master_address = "0.0.0.0:4633";
 
 //Boolean to determine if the server is the master
 //default is set to true
@@ -215,7 +215,7 @@ void* RunServer(void* port_no) {
         
         // TO DO ------------------------------------------------------
         // get the actual master address
-        //master_address = "0.0.0.0:4633";
+        master_address = "0.0.0.0:4633";
         
         cout << "I am the Master Server\n";
         cout << "The Master Process's Address is: " << master_address << endl;
