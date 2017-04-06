@@ -44,6 +44,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <pthread.h>
 #include <string>
 #include <stdlib.h>
 #include <unistd.h>
@@ -162,8 +163,9 @@ class MessengerServiceServer final : public MessengerServer::Service {
 
 };
 
-void RunServer(string port_no) {
-    string server_address = "0.0.0.0:"+port_no;
+void* RunServer(void* port_no) {
+    string port = *(static_cast<std::string*>(port_no));
+    string server_address = "0.0.0.0:"+port;
     MessengerServiceServer service;
 
     ServerBuilder builder;
@@ -176,6 +178,7 @@ void RunServer(string port_no) {
     
     // Finally assemble the server.
     unique_ptr<Server> server(builder.BuildAndStart());
+    
     cout << "Server listening on " << server_address << endl;
     
     
@@ -186,17 +189,18 @@ void RunServer(string port_no) {
     // start 2 master replica processes, and 1 worker process
     if (isMaster) {
         // start master process
+        /*
         master_address = "0.0.0.0:3056";
         string exec_master = "./master " + master_address;
         system(exec_master.c_str());
-        cout << "Master listening on " << master_address << endl;
-        
+        cout << "In Server - Master listening on " << master_address << endl;
+        */
         /*
         master_address = "0.0.0.0:3057";
         execl("./master", master_address.c_str(), 0);
         cout << "Master listening on " << master_address << endl;
         */
-        
+        /*
         // start 1 worker process
         string worker_address = "0.0.0.0:3057";
         
@@ -204,9 +208,23 @@ void RunServer(string port_no) {
         w.worker_address = worker_address;
         w.clients_connected = 0;
         
+        cout << "Here 1\n";
+        
         string exec_worker = "./worker " + worker_address;
         system(exec_worker.c_str());
-        cout << "Worker listening on " << worker_address << endl;
+        cout << "In Server - Worker listening on " << worker_address << endl;
+        */
+        
+        
+        
+        // TO DO ------------------------------------------------------
+        // get the actual master address
+        master_address = "0.0.0.0:4633";
+        
+        cout << "I am the Master Server\n";
+        cout << "The Master Process's Address is: " << master_address << endl;
+        
+        cout << "\n";
         
     }
     else {
@@ -217,7 +235,7 @@ void RunServer(string port_no) {
         
         //start 3 worker processes
         
-        initial_port = 3057;
+        int initial_port = 3057;
         int num_workers = 0;
         while(num_workers < 3){
             string worker_address = "0.0.0.0:" + initial_port;
@@ -237,7 +255,7 @@ void RunServer(string port_no) {
         }
     }
     
-    
+    cout << "\n";
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
@@ -246,7 +264,7 @@ void RunServer(string port_no) {
 
 int main(int argc, char** argv) {
   
-    string port = "3055";
+    string port = "4632";
     int opt = 0;
     while ((opt = getopt(argc, argv, "p:")) != -1){
         switch(opt) {
@@ -262,10 +280,16 @@ int main(int argc, char** argv) {
     }
     
     // start server service on given port number
-    RunServer(port);
+    pthread_t pthread;
     
+    pthread_create(&pthread, NULL, &RunServer, static_cast<void*>(new string(port)));
+    //RunServer(static_cast<void*>(new string(port)));
     
+    while(true) {
+        continue;
+    }
     
+    cout << "shutting down\n";
     
 
     return 0;

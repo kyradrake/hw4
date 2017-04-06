@@ -97,9 +97,10 @@ int find_user(string username){
     return -1;
 }
 
-class MessengerServiceImpl final : public MessengerWorker::Service {
+class MessengerServiceWorker final : public MessengerWorker::Service {
 
     Status Chat(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
+        /*
         Message message;
         Client *c;
         //Read messages until the client disconnects
@@ -169,6 +170,7 @@ class MessengerServiceImpl final : public MessengerWorker::Service {
         //If the client disconnected from Chat Mode, set connected to false
         c->connected = false;
         return Status::OK;
+        */
     }
     
     Status Worker(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
@@ -227,9 +229,9 @@ class MessengerWorker {
 
 */
 
-void RunWorker(string port_no) {
-    string worker_address = "0.0.0.0:"+port_no;
-    MessengerServiceImpl service;
+void RunWorker(string address) {
+    string worker_address = "0.0.0.0:"+address;
+    MessengerServiceWorker service;
 
     ServerBuilder builder;
     // Listen on the given address without any authentication mechanism.
@@ -241,10 +243,9 @@ void RunWorker(string port_no) {
     
     // Finally assemble the server.
     unique_ptr<Server> worker(builder.BuildAndStart());
-    cout << "Server listening on " << worker_address << endl;
+    cout << "Worker listening on " << worker_address << endl;
     
-    //Initialzie worker on server to master right here, MAY NOT BE THE RIGHT SPOT
-    //worker->WorkerInitialize(worker_address);
+    cout << "\n\n";
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
@@ -252,19 +253,9 @@ void RunWorker(string port_no) {
 }
 
 int main(int argc, char** argv) {
-  
-    string port = "3055";
-    int opt = 0;
-    while ((opt = getopt(argc, argv, "p:")) != -1){
-        switch(opt) {
-            case 'p':
-                port = optarg;
-                break;
-            default:
-                cerr << "Invalid Command Line Argument\n";
-        }
-    }
-    RunWorker(port);
-
+    cout << "\n\n";
+    cout << "Starting Worker\n";
+    
+    RunWorker(argv[1]);
     return 0;
 }

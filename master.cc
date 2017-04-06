@@ -46,6 +46,7 @@
 #include <memory>
 #include <string>
 #include <stdlib.h>
+#include <thread>
 #include <unistd.h>
 #include <google/protobuf/util/time_util.h>
 #include <grpc++/grpc++.h>
@@ -319,7 +320,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
 };
 
 void RunMaster(string address) {
-    string master_address = address;
+    string master_address = "0.0.0.0:"+address;
     MessengerServiceMaster service;
 
     ServerBuilder builder;
@@ -332,13 +333,19 @@ void RunMaster(string address) {
     
     // Finally assemble the server.
     unique_ptr<Server> master(builder.BuildAndStart());
-    cout << "Master listening on " << master_address << endl;
+    cout << "Master - Master listening on " << master_address << endl;
     
     cout << "\n\n";
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
-    master->Wait();
+    
+    //thread masterThread([master]() {
+        master->Wait();
+    //});
+
+    
+    
 }
 
 int main(int argc, char** argv) {

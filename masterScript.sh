@@ -1,19 +1,20 @@
-echo ""
-echo "Starting initial startup for the reliable server."
-echo ""
+#echo ""
+#echo "Starting initial startup for the reliable server."
+#echo ""
 
-./fbsd -p 3055 -m true &
-export p1=$!
-./master 3055 &
-export p2=$!
-./worker -p 3056 &
-export p3=$!
+./fbsd -p 4632      #-m true 
+#export p1=$!
+./worker 4633 
+./master 4634 
+#export p2=$!
 
-echo "Press enter to kill the following processes individually:"
-echo $p1
-echo $p2
-echo $p3
-read input
-kill $p1
-kill $p2
-kill $p3
+#export p3=$!
+
+#echo "Press enter to kill the following processes individually:"
+#echo $p1
+#echo $p2
+#echo $p3
+#read input
+#kill $p1
+#kill $p2
+#kill $p3
