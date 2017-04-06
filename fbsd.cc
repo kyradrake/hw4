@@ -189,16 +189,12 @@ void* RunServer(void* port_no) {
     // start 2 master replica processes, and 1 worker process
     if (isMaster) {
         // start master process
+        
         /*
-        master_address = "0.0.0.0:3056";
+        master_address = "0.0.0.0:4633";
         string exec_master = "./master " + master_address;
         system(exec_master.c_str());
         cout << "In Server - Master listening on " << master_address << endl;
-        */
-        /*
-        master_address = "0.0.0.0:3057";
-        execl("./master", master_address.c_str(), 0);
-        cout << "Master listening on " << master_address << endl;
         */
         /*
         // start 1 worker process
@@ -219,7 +215,7 @@ void* RunServer(void* port_no) {
         
         // TO DO ------------------------------------------------------
         // get the actual master address
-        master_address = "0.0.0.0:4633";
+        //master_address = "0.0.0.0:4633";
         
         cout << "I am the Master Server\n";
         cout << "The Master Process's Address is: " << master_address << endl;
@@ -260,6 +256,8 @@ void* RunServer(void* port_no) {
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
     server->Wait();
+    
+    return 0;
 }
 
 int main(int argc, char** argv) {
@@ -289,7 +287,7 @@ int main(int argc, char** argv) {
         continue;
     }
     
-    cout << "shutting down\n";
+    cout << "Server is Shutting Down\n";
     
 
     return 0;

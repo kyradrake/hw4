@@ -353,5 +353,8 @@ int main(int argc, char** argv) {
     cout << "Starting Master\n";
     
     RunMaster(argv[1]);
+    
+    cout << "Master is Shutting Down\n";
+    
     return 0;
 }
