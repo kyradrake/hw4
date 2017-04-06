@@ -160,6 +160,16 @@ class MessengerServiceServer final : public MessengerServer::Service {
         }
         return Status::OK; 
     }
+    
+    Status SaveMasterAddress(ServerContext* context, const Request* request, Reply* reply) override {
+        master_address = request.msg();
+        if (isMaster) {
+            reply->set_msg("Saved the master_address on the server holding the master");
+        } else {
+            reply->set_msg("Error: Saved the master_address on the server NOT holding the master");
+        }
+        return Status::OK; 
+    }
 
 };
 

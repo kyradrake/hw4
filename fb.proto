@@ -44,7 +44,7 @@ service MessengerMaster {
     rpc StartChatMode (Request) returns (Reply) {}
     
     // Initalize worker on the worker database
-    rpc AddWorkerDB (Request) returns (Reply) {}
+    rpc AddWorker (Request) returns (Reply) {}
 }
 
 // The service definition for the server processes
@@ -62,8 +62,8 @@ service MessengerServer {
     // Connects the client to the specified server
     rpc Connect (Request) returns (Reply) {}
     
-    // Sends request from worker to server to initialize worker on the master
-    rpc WorkerInitialize (Request) returns (Reply) {}
+    // Saves the Address of the Master in case the Master dies
+    rpc SaveMasterAddress (Request) returns (Reply) {}
 }
 
 // The service definition for the worker processes
