@@ -2,12 +2,12 @@
 #echo "Starting initial startup for the reliable server."
 #echo ""
 
-./fbsd -p 4632 &     #-m true 
+#./fbsd -p 4632 &     #-m true 
 #export p1=$!
 
-./master 4633 &
+./master 4632 &
 
-./worker 4634 
+./worker 4633 
 #export p2=$!
 
 
