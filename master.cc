@@ -66,6 +66,7 @@ using hw4::Message;
 using hw4::ListReply;
 using hw4::Request;
 using hw4::Reply;
+using hw4::AssignedWorkers;
 using hw4::MessengerMaster;
 
 using namespace std;
@@ -87,14 +88,11 @@ struct Client {
 struct Worker {
     string hostname;
     string portnumber;
-    int numClientsConnected; //don't care about primary/secondary clients right now, fix later
+    unique_ptr<MessengerWorker::Stub> workerStub;
 };
 
 //Vector that stores every client that has been created
 vector<Client> client_db;
-
-//Vector that stores every worker that has been created
-vector<Worker> worker_db;
 
 //Helper function used to find a Client object given its username
 int find_user(string username){
@@ -108,6 +106,19 @@ int find_user(string username){
     return -1;
 }
 
+class MessengerMaster {
+    public:
+    string masterAddress;
+    //how do I create a new worker stub to push into this thingy
+    vector<Worker> listWorkers;
+    
+    MessengerMaster(string a){
+        masterAddress = a;
+    }
+};
+
+MessengerMaster masterInfo;
+
 // Logic and data behind the server's behavior.
 class MessengerServiceMaster final : public MessengerMaster::Service {
   
@@ -117,10 +128,96 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
        return Status::OK;
    }
 
-    Status FindPrimaryWorker(ServerContext* context, const Request* request, Reply* reply) override {
-       cout << "Find primary and secondary workers for new client\n";
+    Status FindPrimaryWorker(ServerContext* context, const Request* request, AssignedWorkers* reply) override {
+        /*
+            HOW TO USE ASSIGNED WORKERS
+            
+            reply->set_primary(ADDRESS OF PRIMARY WORKER)
+            reply->set_secondary1(ADDRESS OF SECONDARY WORKER 1)
+            reply->set_secondary2(ADDRESS OF SECONDARY WORKER 2)
+        */
+        
+        cout << "Find primary and secondary workers for new client\n";
        
-       return Status::OK;
+        int indexPrimary = -1;
+        int indexSecondary1 = -1;
+        int indexSecondary2 = -1;
+        
+        int currentMin = 999999;
+        
+        //initial loop to find the index for the primary worker
+        for(int i = 0; i < masterInfo.listWorkers.size(); i++){
+            
+            Status status = masterInfo.listWorkers[i].workerStub->NumberClientsConnected(&context, request, &reply);
+      
+            if(status.ok()) {
+                cout << reply.msg() << endl;
+                if(stoi(reply.msg()) < currentMin){
+                    indexPrimary = i;
+                }
+            }
+            else {
+                cout << status.error_code() << ": " << status.error_message()
+                    << endl;
+                cout << "RPC failed\n";
+            }
+        }
+        
+        currentMin = 999999;
+        
+        //loop to find the index for the first secondary worker
+        for(int i = 0; i < masterInfo.listWorkers.size(); i++){
+            
+            Status status = masterInfo.listWorkers[i].workerStub->NumberClientsConnected(&context, request, &reply);
+      
+            if(status.ok()) {
+                cout << reply.msg() << endl;
+                if(stoi(reply.msg()) < currentMin && masterInfo.listWorkrs[i].hostname != masterInfo.listWorkers[indexPrimary].hostname){
+                    indexSecondary1 = i;
+                }
+            }
+            else {
+                cout << status.error_code() << ": " << status.error_message()
+                    << endl;
+                cout << "RPC failed\n";
+            }
+        }
+        
+        currentMin = 999999;
+        
+        //loop to find the index for the second secondary worker
+        for(int i = 0; i < masterInfo.listWorkers.size(); i++){
+            
+            Status status = masterInfo.listWorkers[i].workerStub->NumberClientsConnected(&context, request, &reply);
+      
+            if(status.ok()) {
+                cout << reply.msg() << endl;
+                if(stoi(reply.msg()) < currentMin && (masterInfo.listWorkrs[i].hostname != masterInfo.listWorkers[indexPrimary].hostname || masterInfo.listWorkrs[i].hostname != masterInfo.listWorkers[indexSecondary1].hostname)){
+                    indexSecondary2 = i;
+                }
+            }
+            else {
+                cout << status.error_code() << ": " << status.error_message()
+                    << endl;
+                cout << "RPC failed\n";
+            }
+        }        
+                   
+        string primaryAddress = masterInfo.listWorkers[indexPrimary].hostname + ":" + masterInfo.listWorkers[indexPrimary].portnumber;
+        reply->set_primary(primaryAddress);
+                   
+        string secondary1Address = masterInfo.listWorkers[indexSecondary1]hostname + ":" + masterInfo.listWorkers[indexSecondary1].portnumber;
+        reply->set_secondary1(secondary1Address);
+                   
+        if(indexSecondary2 != -1){
+            string secondary2Address = masterInfo.listWorkers[indexSecondary2]hostname + ":" + masterInfo.listWorkers[indexSecondary2].portnumber;
+            reply->set_secondary2(secondary2Address);
+        } else {
+            //INVALID
+            reply->set_secondary2("NONE");
+        }
+        
+        return Status::OK;
    }
 };
 
@@ -140,6 +237,14 @@ void RunMaster(string address) {
     unique_ptr<Server> master(builder.BuildAndStart());
     cout << "Master listening on " << master_address << endl;
     
+<<<<<<< HEAD
+    cout << "\n\n";
+    
+    //setting up MessengerMaster class
+    masterInfo = new MessengerMaster(master_address);
+
+=======
+>>>>>>> origin/master
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
     
