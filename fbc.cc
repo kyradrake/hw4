@@ -101,26 +101,13 @@ class MessengerClient {
 
         Status status = workerStub->Connect(&context, request, &reply);
         
-        
-        /*
-            THIS IS FAILING
-            IT RETURNS ERROR:14 WHICH IS "CONNECTION UNAVAILABLE"
-            FOR THIS REASON IT SKIPS TO THE ELSE STATEMENT
-            
-            ACCORDING TO PRINT STATEMENTS, THE CLIENT/SERVER SEEM TO BE ON SAME HOST/PORT
-            DEBUG LATER
-        
-        */
-        
-        
-        
         if(status.ok()) {
             cout << reply.msg() << endl;
             //have received the address for the master stub, initialize master stub and stuffs
             shared_ptr<Channel> channel = grpc::CreateChannel(reply.msg(), grpc::InsecureChannelCredentials());
             workerStub = MessengerWorker::NewStub(channel);
             
-            cout << "Connecting to Worker on Address: " << reply.msg() << endl;
+            cout << "Connecting to Assigned Worker on Address: " << reply.msg() << endl;
         }
         else {
             cout << "Error: " << status.error_code() << ": " << status.error_message() << endl;
@@ -416,14 +403,13 @@ int main(int argc, char** argv) {
 
     string serverInfo = hostname + ":" + port;
     
-    cout << "Connecting to Server at " << serverInfo << endl;
+    cout << "Connecting to Worker at " << serverInfo << endl;
 
     //Create the messenger client with the login info
     shared_ptr<Channel> channel = grpc::CreateChannel(serverInfo, grpc::InsecureChannelCredentials());
     MessengerClient *messenger = new MessengerClient(channel, username);
     
-    //Connect to Master
-    cout << "Connecting to Master\n";
+    //Connect to Assigned Worker
     messenger->Connect();
     
     //Call the login stub function

@@ -85,6 +85,8 @@ struct Client {
 //Vector that stores every client that has been created
 vector<Client> client_db;
 
+string worker_address = "";
+
 //Helper function used to find a Client object given its username
 int find_user(string username){
     int index = 0;
@@ -175,6 +177,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
 
     //Called when the client startd and checks whether their username is taken or not
     Status Login(ServerContext* context, const Request* request, Reply* reply) override {
+        cout << "Client is logging in\n";
         Client c;
         string username = request->username();
         int user_index = find_user(username);
@@ -182,13 +185,16 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             c.username = username;
             client_db.push_back(c);
             reply->set_msg("Login Successful!");
+            cout << "Successful Login\n";
         }
         else{ 
             Client *user = &client_db[user_index];
             if(user->connected) {
+                cout << "Unsuccessful Login\n";
                 reply->set_msg("Invalid Username");
             }
             else{
+                cout << "Successful Login\n";
                 string msg = "Welcome Back " + user->username;
                 reply->set_msg(msg);
                 user->connected = true;
@@ -215,6 +221,9 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         }
         
         */
+        
+        reply->set_msg(worker_address);
+        
         return Status::OK; 
         
         
@@ -393,7 +402,7 @@ class MessengerWorker {
 */
 
 void RunWorker(string port) {
-    string worker_address = "0.0.0.0:"+port;
+    worker_address = "0.0.0.0:"+port;
     MessengerServiceWorker service;
 
     ServerBuilder builder;
@@ -420,5 +429,7 @@ int main(int argc, char** argv) {
     cout << "Starting Worker\n";
     
     RunWorker(argv[1]);
+    
+    cout << "Worker shutting down\n";
     return 0;
 }
