@@ -162,7 +162,12 @@ class MessengerServiceServer final : public MessengerServer::Service {
     }
     
     Status SaveMasterAddress(ServerContext* context, const Request* request, Reply* reply) override {
-        master_address = request.msg();
+        if(request->username() != "Master") {
+            reply->set_msg("Invalid Request - Must be Sent From a Master Process");
+            return Status::OK;
+        }
+        
+        master_address = request->arguments(0);
         if (isMaster) {
             reply->set_msg("Saved the master_address on the server holding the master");
         } else {
