@@ -37,11 +37,8 @@ import "google/protobuf/timestamp.proto";
 service MessengerMaster {
     
     // Initalize worker on the worker database
-    rpc AddWorker (Request) returns (Reply) {}
+    rpc WorkerConnected (Request) returns (Reply) {}
     
-    // "Heartbeat" - make sure all workers are active
-    rpc CheckWorkers (Request) returns (Reply) {}
-
     // Returns the primary worker - the worker with least clients connected
     rpc FindPrimaryWorker (Request) returns (Reply) {}
 }
@@ -75,8 +72,14 @@ service MessengerWorker {
     // Chat communication between workers for file management cross server
     rpc Worker (stream Message) returns (stream Message) {}
     
+    // "Heartbeat" - make sure all workers are active
+    rpc CheckWorker (Request) returns (Reply) {}
+    
     // If the master dies, master replica sends address to the worker
     rpc UpdateMasterAddress (Request) returns (Reply) {}
+    
+    // Returns the number of clients connected to the worker
+    rpc NumberClientsConnected (Request) returns (Reply) {}
 }
 
 message ListReply {
