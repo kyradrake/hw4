@@ -40,7 +40,7 @@ service MessengerMaster {
     rpc WorkerConnected (Request) returns (Reply) {}
     
     // Returns the primary worker - the worker with least clients connected
-    rpc FindPrimaryWorker (Request) returns (Reply) {}
+    rpc FindPrimaryWorker (Request) returns (AssignedWorkers) {}
 }
 
 // The service definition for the server processes
@@ -98,6 +98,12 @@ message Reply {
 
 message WorkerRequest {
     string address = 1;
+}
+
+message AssignedWorkers {
+    string primary = 1;
+    string secondary1 = 2;
+    string secondary2 = 3;
 }
 
 message Message {
