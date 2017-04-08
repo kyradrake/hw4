@@ -387,7 +387,7 @@ int main(int argc, char** argv) {
     string hostname = "0.0.0.0";
     string username = "default";
     
-    string port = "4632";
+    string port = "4633";
     string messages = "10000";
     string usec = "n";
     int opt = 0;
