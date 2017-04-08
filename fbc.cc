@@ -78,9 +78,10 @@ Message MakeMessage(const std::string& username, const std::string& msg) {
 class MessengerClient {
     public:
     
-    MessengerClient(shared_ptr<Channel> channel, string uname){
+    MessengerClient(shared_ptr<Channel> channel, string uname, string waddress){
         workerStub = MessengerWorker::NewStub(channel);
         username = uname;
+        workerAddress = waddress;
     }
     
     void Connect() {
@@ -103,9 +104,14 @@ class MessengerClient {
         
         if(status.ok()) {
             cout << reply.msg() << endl;
-            //have received the address for the master stub, initialize master stub and stuffs
-            shared_ptr<Channel> channel = grpc::CreateChannel(reply.msg(), grpc::InsecureChannelCredentials());
-            workerStub = MessengerWorker::NewStub(channel);
+            
+            // if assigned worker is not same as current address, reset worker stub
+            if(reply.msg() != workerAddress) {
+                
+                shared_ptr<Channel> channel = grpc::CreateChannel(reply.msg(), grpc::InsecureChannelCredentials());
+                workerStub = MessengerWorker::NewStub(channel);
+            }
+            
             
             cout << "Connecting to Assigned Worker on Address: " << reply.msg() << endl;
         }
@@ -318,6 +324,7 @@ class MessengerClient {
     //unique_ptr<MessengerServer::Stub> serverStub;
     unique_ptr<MessengerMaster::Stub> masterStub;
     unique_ptr<MessengerWorker::Stub> workerStub;
+    string workerAddress;
 };
 
 //Parses user input while the client is in Command Mode
@@ -407,7 +414,7 @@ int main(int argc, char** argv) {
 
     //Create the messenger client with the login info
     shared_ptr<Channel> channel = grpc::CreateChannel(serverInfo, grpc::InsecureChannelCredentials());
-    MessengerClient *messenger = new MessengerClient(channel, username);
+    MessengerClient *messenger = new MessengerClient(channel, username, serverInfo);
     
     //Connect to Assigned Worker
     messenger->Connect();

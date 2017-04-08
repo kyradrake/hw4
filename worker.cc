@@ -416,8 +416,6 @@ void RunWorker(string port) {
     // Finally assemble the server.
     unique_ptr<Server> worker(builder.BuildAndStart());
     cout << "Worker listening on " << worker_address << endl;
-    
-    cout << "\n\n";
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
@@ -425,9 +423,6 @@ void RunWorker(string port) {
 }
 
 int main(int argc, char** argv) {
-    cout << "\n\n";
-    cout << "Starting Worker\n";
-    
     RunWorker(argv[1]);
     
     cout << "Worker shutting down\n";

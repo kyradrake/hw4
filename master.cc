@@ -138,25 +138,17 @@ void RunMaster(string address) {
     
     // Finally assemble the server.
     unique_ptr<Server> master(builder.BuildAndStart());
-    cout << "Master - Master listening on " << master_address << endl;
+    cout << "Master listening on " << master_address << endl;
     
-    cout << "\n\n";
-
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
     
     //thread masterThread([master]() {
         master->Wait();
     //});
-
-    
-    
 }
 
 int main(int argc, char** argv) {
-    cout << "\n\n";
-    cout << "Starting Master\n";
-    
     RunMaster(argv[1]);
     
     cout << "Master is Shutting Down\n";
