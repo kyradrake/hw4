@@ -173,6 +173,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             }
         }
         
+        /* AS WE ONLY HAVE A SINGLE SERVER WORKING RIGHT NOW, THIS CODE IS NOT NECESSARY
+        
         currentMin = 999999;
         
         //loop to find the index for the first secondary worker
@@ -219,10 +221,14 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
                     << endl;
                 cout << "RPC failed\n";
             }
-        }        
+        }
+        
+        */
                    
         string primaryAddress = masterInfo.listWorkers[indexPrimary].hostname + ":" + masterInfo.listWorkers[indexPrimary].portnumber;
         reply->set_primary(primaryAddress);
+        
+        /*
                    
         string secondary1Address = masterInfo.listWorkers[indexSecondary1].hostname + ":" + masterInfo.listWorkers[indexSecondary1].portnumber;
         reply->set_secondary1(secondary1Address);
@@ -234,6 +240,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             //INVALID
             reply->set_secondary2("NONE");
         }
+        
+        */
         
         return Status::OK;
    }
