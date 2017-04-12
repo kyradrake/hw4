@@ -153,11 +153,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
    Status WorkerConnected(ServerContext* context, const WorkerAddress* request, Reply* reply) override {
        cout << "New Worker Connected to Master\n";
        
-       //string hostname = request->host();
-       //string portnumber = request->port();
-       
-       string hostname = "test1";
-       string portnumber = "test2";
+       string hostname = request->host();
+       string portnumber = request->port();
        
        shared_ptr<Channel> workerChannel = grpc::CreateChannel(hostname + ":" + portnumber, grpc::InsecureChannelCredentials());
        WorkerProcess* worker = new WorkerProcess(hostname, portnumber, workerChannel);
@@ -282,7 +279,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
 };
 
 void* RunMaster(void* v) {
-    string address = master_hostname + master_portnumber;
+    string address = master_hostname + ":" + master_portnumber;
     MessengerServiceMaster service;
 
     ServerBuilder builder;
@@ -313,7 +310,7 @@ int main(int argc, char** argv) {
     master_portnumber = "4632";
     
     int opt = 0;
-    while ((opt = getopt(argc, argv, "p:")) != -1){
+    while ((opt = getopt(argc, argv, "h:p:")) != -1){
         switch(opt) {
             case 'h':
                 master_hostname = optarg;
