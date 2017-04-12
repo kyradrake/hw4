@@ -378,7 +378,7 @@ int main(int argc, char** argv) {
     // localhost at port 50051). We indicate that the channel isn't authenticated
     // (use of InsecureChannelCredentials()).
 
-    string hostname = "0.0.0.0";
+    string hostname = "lenss-comp1.cse.tamu.edu";
     string username = "default";
     
     string port = "4633";

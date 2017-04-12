@@ -70,6 +70,7 @@ using hw4::Message;
 using hw4::ListReply;
 using hw4::Request;
 using hw4::Reply;
+using hw4::WorkerAddress;
 using hw4::AssignedWorkers;
 using hw4::MessengerWorker;
 using hw4::MessengerMaster;
@@ -94,6 +95,29 @@ class WorkerToMasterConnection {
     
     WorkerToMasterConnection(shared_ptr<Channel> channel){
         masterStub = MessengerMaster::NewStub(channel);
+    }
+    
+    
+    void WorkerConnected(string workerHost, string workerPort) {
+        // Data sent to master 
+        WorkerAddress request;
+        request.set_host(workerHost);
+        request.set_port(workerPort);
+        
+        // Data received from master
+        Reply reply;
+        
+        // Context for the client
+        ClientContext context;
+        
+        Status status = masterStub->WorkerConnected(&context, request, &reply);
+        
+        if(status.ok()) {
+            cout << "Worker Connected to Master Process" << endl;
+        }
+        else {
+            cout << "Error: " << status.error_code() << ": " << status.error_message() << endl;
+        }
     }
     
     string FindPrimaryWorker() {
@@ -133,8 +157,8 @@ class WorkerToMasterConnection {
 //Vector that stores every client that has been created
 vector<Client> client_db;
 
-string worker_address = "";
-string master_address = "";
+string workerAddress = "";
+string masterAddress = "";
 
 WorkerToMasterConnection* masterConnection;
 
@@ -276,7 +300,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         string assignedWorker = masterConnection->FindPrimaryWorker();
         cout << "Assigned Worker is: " << assignedWorker << endl;
         
-        reply->set_msg(worker_address);
+        reply->set_msg(workerAddress);
         
         return Status::OK; 
         
@@ -408,14 +432,12 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     
 };
 
-void* RunWorker(void* port) {
-    string portnum = (char*) port;
-    worker_address = "0.0.0.0:"+portnum;
+void* RunWorker(void* v) {
     MessengerServiceWorker service;
 
     ServerBuilder builder;
     // Listen on the given address without any authentication mechanism.
-    builder.AddListeningPort(worker_address, grpc::InsecureServerCredentials());
+    builder.AddListeningPort(workerAddress, grpc::InsecureServerCredentials());
     
     // Register "service" as the instance through which we'll communicate with
     // clients. In this case it corresponds to an *synchronous* service.
@@ -423,26 +445,53 @@ void* RunWorker(void* port) {
     
     // Finally assemble the server.
     unique_ptr<Server> worker(builder.BuildAndStart());
-    cout << "Worker listening on " << worker_address << endl;
+    cout << "Worker listening on " << workerAddress << endl;
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
     worker->Wait();
 }
 
-void ConnectToMaster(string maddress) {
-    master_address = maddress;
-    
-    shared_ptr<Channel> channel = grpc::CreateChannel(master_address, grpc::InsecureChannelCredentials());
+void ConnectToMaster(string workerHost, string workerPort) {
+    shared_ptr<Channel> channel = grpc::CreateChannel(masterAddress, grpc::InsecureChannelCredentials());
     masterConnection = new WorkerToMasterConnection(channel);
+    
+    masterConnection->WorkerConnected(workerHost, workerPort);
 }
 
 int main(int argc, char** argv) {
+    string host = "lenss-comp1.cse.tamu.edu";
+    string port = "4633";
+    string masterHost = "lenss-comp1.cse.tamu.edu";
+    string masterPort = "4632";
+    int opt = 0;
+    
+    while ((opt = getopt(argc, argv, "h:p:m:a:")) != -1){
+        switch(opt) {
+            case 'h':
+                host = optarg;
+                break;
+            case 'p':
+                port = optarg;
+                break;
+            case 'm':
+                masterHost = optarg;
+                break;
+            case 'a':
+                masterPort = optarg;
+                break;
+            default: 
+                cerr << "Invalid Command Line Argument\n";
+        }
+    }
+    
+    workerAddress = host + ":" + port;
+    masterAddress = masterHost + ":" + masterPort;
     
     pthread_t workerThread;
-	pthread_create(&workerThread, NULL, RunWorker, (void*) argv[1]);
+	pthread_create(&workerThread, NULL, RunWorker, NULL);
     
-    ConnectToMaster("0.0.0.0:4632");
+    ConnectToMaster(host, port);
     
     while(true) {
         continue;

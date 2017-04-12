@@ -5,9 +5,9 @@
 #./fbsd -p 4632 &     #-m true 
 #export p1=$!
 
-./master 4632 &
+./master -h lenss-comp1.cse.tamu.edu -p 4632 &
 
-./worker 4633 
+./worker -h lenss-comp1.cse.tamu.edu -p 4633 -m lenss-comp1.cse.tamu.edu -a 4632 
 #export p2=$!
 
 #./worker 4634
