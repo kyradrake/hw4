@@ -63,6 +63,10 @@ using grpc::ServerReaderWriter;
 using grpc::ServerWriter;
 using grpc::ClientContext;
 using grpc::Status;
+using grpc::Channel;
+using grpc::ClientReader;
+using grpc::ClientReaderWriter;
+using grpc::ClientWriter;
 using hw4::Message;
 using hw4::ListReply;
 using hw4::WorkerAddress;
@@ -88,10 +92,23 @@ struct Client {
 };
 
 //Worker struct
-struct Worker {
+class WorkerProcess {
+    public:
     string hostname;
     string portnumber;
     unique_ptr<MessengerWorker::Stub> workerStub;
+    
+    WorkerProcess(){
+        hostname = "";
+        portnumber= "";
+        workerStub = NULL;
+    }
+    
+    WorkerProcess(string h, string p, shared_ptr<Channel> c){
+        hostname = h;
+        portnumber = p;
+        workerStub = MessengerWorker::NewStub(c);
+    }
 };
 
 //Vector that stores every client that has been created
@@ -113,7 +130,7 @@ class MasterHelper {
     public:
     string masterAddress;
     //how do I create a new worker stub to push into this thingy
-    vector<Worker> listWorkers;
+    vector<WorkerProcess*> listWorkers;
     
     MasterHelper(){
         masterAddress = "";
@@ -126,11 +143,27 @@ class MasterHelper {
 
 MasterHelper masterInfo;
 
+//hostname and portnumber for the master
+string master_hostname;
+string master_portnumber;
+
 // Logic and data behind the server's behavior.
 class MessengerServiceMaster final : public MessengerMaster::Service {
   
    Status WorkerConnected(ServerContext* context, const WorkerAddress* request, Reply* reply) override {
        cout << "New Worker Connected to Master\n";
+       
+       //string hostname = request->host();
+       //string portnumber = request->port();
+       
+       string hostname = "test1";
+       string portnumber = "test2";
+       
+       shared_ptr<Channel> workerChannel = grpc::CreateChannel(hostname + ":" + portnumber, grpc::InsecureChannelCredentials());
+       WorkerProcess* worker = new WorkerProcess(hostname, portnumber, workerChannel);
+       
+       //push worker object onto our list of workers
+       masterInfo.listWorkers.push_back(worker);
        
        return Status::OK;
    }
@@ -159,7 +192,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Request clientRequest;
             Reply clientReply;
             
-            Status status = masterInfo.listWorkers[i].workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
+            Status status = masterInfo.listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
       
             if(status.ok()) {
                 cout << clientReply.msg() << endl;
@@ -185,7 +218,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Request clientRequest;
             Reply clientReply;
             
-            Status status = masterInfo.listWorkers[i].workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
+            Status status = masterInfo.listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
       
             if(status.ok()) {
                 cout << clientReply.msg() << endl;
@@ -209,7 +242,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Request clientRequest;
             Reply clientReply;
             
-            Status status = masterInfo.listWorkers[i].workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
+            Status status = masterInfo.listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
       
             if(status.ok()) {
                 cout << clientReply.msg() << endl;
@@ -226,7 +259,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         */
                    
-        string primaryAddress = masterInfo.listWorkers[indexPrimary].hostname + ":" + masterInfo.listWorkers[indexPrimary].portnumber;
+        string primaryAddress = masterInfo.listWorkers[indexPrimary]->hostname + ":" + masterInfo.listWorkers[indexPrimary]->portnumber;
         reply->set_primary(primaryAddress);
         
         /*
@@ -248,14 +281,13 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
    }
 };
 
-void* RunMaster(void* addressArg) {
-    string address = (char*) addressArg;
-    string master_address = "0.0.0.0:"+address;
+void* RunMaster(void* v) {
+    string address = master_hostname + master_portnumber;
     MessengerServiceMaster service;
 
     ServerBuilder builder;
     // Listen on the given address without any authentication mechanism.
-    builder.AddListeningPort(master_address, grpc::InsecureServerCredentials());
+    builder.AddListeningPort(address, grpc::InsecureServerCredentials());
     
     // Register "service" as the instance through which we'll communicate with
     // clients. In this case it corresponds to an *synchronous* service.
@@ -263,10 +295,10 @@ void* RunMaster(void* addressArg) {
     
     // Finally assemble the server.
     unique_ptr<Server> master(builder.BuildAndStart());
-    cout << "Master listening on " << master_address << endl;
+    cout << "Master listening on " << address << endl;
 
     //setting up MasterHelper class
-    masterInfo = MasterHelper(master_address);
+    masterInfo = MasterHelper(address);
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
@@ -276,10 +308,26 @@ void* RunMaster(void* addressArg) {
 }
 
 int main(int argc, char** argv) {
-    //RunMaster(argv[1]);
+    
+    //default
+    master_portnumber = "4632";
+    
+    int opt = 0;
+    while ((opt = getopt(argc, argv, "p:")) != -1){
+        switch(opt) {
+            case 'h':
+                master_hostname = optarg;
+                break;
+            case 'p':
+                master_portnumber = optarg;
+                break;
+            default:
+                cerr << "Invalid Command Line Argument\n";
+        }
+    }
     
     pthread_t masterThread;
-	pthread_create(&masterThread, NULL, RunMaster, (void*) argv[1]);
+	pthread_create(&masterThread, NULL, RunMaster, NULL);
     
     cout << "Thread started\n";
     
