@@ -113,16 +113,15 @@ class WorkerToMasterConnection {
         Status status = masterStub->WorkerConnected(&context, request, &reply);
         
         if(status.ok()) {
-            cout << "Worker Connected to Master Process" << endl;
+            cout << "Worker - Worker Connected to Master Process" << endl;
         }
         else {
-            cout << "Error: " << status.error_code() << ": " << status.error_message() << endl;
+            cout << "Worker - Error: " << status.error_code() << ": " << status.error_message() << endl;
         }
     }
     
     string FindPrimaryWorker() {
         if(masterStub == NULL) {
-            cout << "master stub is null\n";
             return "NULL ERROR";
         }
         
@@ -139,12 +138,12 @@ class WorkerToMasterConnection {
         Status status = masterStub->FindPrimaryWorker(&context, request, &reply);
         
         if(status.ok()) {
-            cout << "Primary Worker: " << reply.primary() << endl;
+            cout << "Worker - Primary Worker: " << reply.primary() << endl;
             
             return reply.primary();
         }
         else {
-            cout << "Error: " << status.error_code() << ": " << status.error_message() << endl;
+            cout << "Worker - Error: " << status.error_code() << ": " << status.error_message() << endl;
             
             return "ERROR";
         }
@@ -419,13 +418,13 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     
     
     Status UpdateMasterAddress(ServerContext* context, const Request* request, Reply* reply) override {
-        cout << "Updating master address\n";
+        cout << "Worker - Updating master address\n";
         
         return Status::OK;
     }
     
     Status NumberClientsConnected(ServerContext* context, const Request* request, Reply* reply) override {
-        cout << "Tell master how many clients are connected \n";
+        cout << "Worker - Tell master how many clients are connected \n";
         
         return Status::OK;
     }
@@ -445,7 +444,7 @@ void* RunWorker(void* v) {
     
     // Finally assemble the server.
     unique_ptr<Server> worker(builder.BuildAndStart());
-    cout << "Worker listening on " << workerAddress << endl;
+    cout << "Worker - Worker listening on " << workerAddress << endl;
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
@@ -453,6 +452,8 @@ void* RunWorker(void* v) {
 }
 
 void ConnectToMaster(string workerHost, string workerPort) {
+    
+    
     shared_ptr<Channel> channel = grpc::CreateChannel(masterAddress, grpc::InsecureChannelCredentials());
     masterConnection = new WorkerToMasterConnection(channel);
     
@@ -481,7 +482,7 @@ int main(int argc, char** argv) {
                 masterPort = optarg;
                 break;
             default: 
-                cerr << "Invalid Command Line Argument\n";
+                cerr << "Worker - Invalid Command Line Argument\n";
         }
     }
     
@@ -497,6 +498,6 @@ int main(int argc, char** argv) {
         continue;
     }
     
-    cout << "Worker shutting down\n";
+    cout << "Worker - Worker shutting down\n";
     return 0;
 }
