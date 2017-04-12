@@ -37,24 +37,11 @@ import "google/protobuf/timestamp.proto";
 service MessengerMaster {
     
     // Initalize worker on the worker database
-    rpc WorkerConnected (Request) returns (Reply) {}
+    rpc WorkerConnected (WorkerAddress) returns (Reply) {}
     
     // Returns the primary worker - the worker with least clients connected
     rpc FindPrimaryWorker (Request) returns (AssignedWorkers) {}
 }
-
-// The service definition for the server processes
-//service MessengerServer {
-
-    // Master requests the server to start a new worker process
-    //rpc CreateWorker (Request) returns (Reply) {}
-
-    // Connects the client to the specified server
-    //rpc Connect (Request) returns (Reply) {}
-    
-    // Saves the Address of the Master in case the Master dies
-    //rpc SaveMasterAddress (Request) returns (Reply) {}
-//}
 
 // The service definition for the worker processes
 service MessengerWorker {
@@ -96,8 +83,9 @@ message Reply {
     string msg = 1;
 }
 
-message WorkerRequest {
-    string address = 1;
+message WorkerAddress {
+    string host = 1;
+    string port = 2;
 }
 
 message AssignedWorkers {

@@ -65,6 +65,7 @@ using grpc::ClientContext;
 using grpc::Status;
 using hw4::Message;
 using hw4::ListReply;
+using hw4::WorkerAddress;
 using hw4::Request;
 using hw4::Reply;
 using hw4::AssignedWorkers;
@@ -128,7 +129,7 @@ MasterHelper masterInfo;
 // Logic and data behind the server's behavior.
 class MessengerServiceMaster final : public MessengerMaster::Service {
   
-   Status WorkerConnected(ServerContext* context, const Request* request, Reply* reply) override {
+   Status WorkerConnected(ServerContext* context, const WorkerAddress* request, Reply* reply) override {
        cout << "New Worker Connected to Master\n";
        
        return Status::OK;
@@ -247,7 +248,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
    }
 };
 
-void RunMaster(string address) {
+void* RunMaster(void* addressArg) {
+    string address = (char*) addressArg;
     string master_address = "0.0.0.0:"+address;
     MessengerServiceMaster service;
 
@@ -269,13 +271,21 @@ void RunMaster(string address) {
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
     
-    //thread masterThread([master]() {
-        master->Wait();
-    //});
+    master->Wait();
+    //thread masterThread(threadWait, master);
 }
 
 int main(int argc, char** argv) {
-    RunMaster(argv[1]);
+    //RunMaster(argv[1]);
+    
+    pthread_t masterThread;
+	pthread_create(&masterThread, NULL, RunMaster, (void*) argv[1]);
+    
+    cout << "Thread started\n";
+    
+    while(true) {
+        continue;
+    }
     
     cout << "Master is Shutting Down\n";
     

@@ -46,11 +46,11 @@ fbc: fb.pb.o fb.grpc.pb.o fbc.o
 
 # fbsd: fb.pb.o fb.grpc.pb.o fbsd.o
 #	$(CXX) $^ $(LDFLAGS) -g -o $@
-    
-worker: fb.pb.o fb.grpc.pb.o worker.o
+ 
+master: fb.pb.o fb.grpc.pb.o master.o
 	$(CXX) $^ $(LDFLAGS) -g -o $@
     
-master: fb.pb.o fb.grpc.pb.o master.o
+worker: fb.pb.o fb.grpc.pb.o worker.o
 	$(CXX) $^ $(LDFLAGS) -g -o $@
 
 .PRECIOUS: %.grpc.pb.cc

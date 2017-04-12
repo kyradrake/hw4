@@ -54,6 +54,11 @@
 
 using google::protobuf::Timestamp;
 using google::protobuf::Duration;
+using grpc::Channel;
+using grpc::ClientContext;
+using grpc::ClientReader;
+using grpc::ClientReaderWriter;
+using grpc::ClientWriter;
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
@@ -65,7 +70,9 @@ using hw4::Message;
 using hw4::ListReply;
 using hw4::Request;
 using hw4::Reply;
+using hw4::AssignedWorkers;
 using hw4::MessengerWorker;
+using hw4::MessengerMaster;
 
 using namespace std;
 
@@ -82,10 +89,54 @@ struct Client {
     }
 };
 
+class WorkerToMasterConnection {
+    public:
+    
+    WorkerToMasterConnection(shared_ptr<Channel> channel){
+        masterStub = MessengerMaster::NewStub(channel);
+    }
+    
+    string FindPrimaryWorker() {
+        if(masterStub == NULL) {
+            cout << "master stub is null\n";
+            return "NULL ERROR";
+        }
+        
+        // Data being sent to the server
+        Request request;
+        request.set_username("Worker");
+        
+        // Container for the data from the server
+        AssignedWorkers reply;
+        
+        // Context for the client
+        ClientContext context;
+        
+        Status status = masterStub->FindPrimaryWorker(&context, request, &reply);
+        
+        if(status.ok()) {
+            cout << "Primary Worker: " << reply.primary() << endl;
+            
+            return reply.primary();
+        }
+        else {
+            cout << "Error: " << status.error_code() << ": " << status.error_message() << endl;
+            
+            return "ERROR";
+        }
+    }
+    
+    private:
+    unique_ptr<MessengerMaster::Stub> masterStub;
+};
+
 //Vector that stores every client that has been created
 vector<Client> client_db;
 
 string worker_address = "";
+string master_address = "";
+
+WorkerToMasterConnection* masterConnection;
 
 //Helper function used to find a Client object given its username
 int find_user(string username){
@@ -177,7 +228,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
 
     //Called when the client startd and checks whether their username is taken or not
     Status Login(ServerContext* context, const Request* request, Reply* reply) override {
-        cout << "Client is logging in\n";
+        //cout << "Client is logging in\n";
         Client c;
         string username = request->username();
         int user_index = find_user(username);
@@ -185,16 +236,16 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             c.username = username;
             client_db.push_back(c);
             reply->set_msg("Login Successful!");
-            cout << "Successful Login\n";
+            //cout << "Successful Login\n";
         }
         else{ 
             Client *user = &client_db[user_index];
             if(user->connected) {
-                cout << "Unsuccessful Login\n";
+                //cout << "Unsuccessful Login\n";
                 reply->set_msg("Invalid Username");
             }
             else{
-                cout << "Successful Login\n";
+                //cout << "Successful Login\n";
                 string msg = "Welcome Back " + user->username;
                 reply->set_msg(msg);
                 user->connected = true;
@@ -222,10 +273,12 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         
         */
         
+        string assignedWorker = masterConnection->FindPrimaryWorker();
+        cout << "Assigned Worker is: " << assignedWorker << endl;
+        
         reply->set_msg(worker_address);
         
         return Status::OK; 
-        
         
         
         
@@ -355,54 +408,9 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     
 };
 
-//I think this is how we want to connect from a worker to a master. If not, I'm still very confused.
-
-/*
-
-class MessengerWorker {
-    public:
-    
-    MessengerWorker(shared_ptr<Channel> channel, string uname){
-        serverStub = MessengerServer::NewStub(channel);
-        username = uname;
-    }
-    
-    // Sends request from worker to server to initialize worker struct on the master
-    void WorkerInitialize(string workerAddress) {
-
-        if(v  == NULL){
-            cout << "Server has not been initialized." << endl;
-            return;
-        }
-
-        WorkerRequest request;
-
-        request.set_address(workerAddress);
-
-        Reply reply;
-
-        ClientContext context;
-
-        Status status = serverStub->WorkerInitialize(&context, request, &reply);
-
-        if(status.ok()) {
-            cout << reply.msg() << endl;
-        }
-        else {
-            cout << status.error_code() << ": " << status.error_message() << endl;
-            cout << "RPC failed\n";
-        }
-    }
-    
-    private:
-    string username;
-    unique_ptr<MessengerServer::Stub> serverStub;
-};
-
-*/
-
-void RunWorker(string port) {
-    worker_address = "0.0.0.0:"+port;
+void* RunWorker(void* port) {
+    string portnum = (char*) port;
+    worker_address = "0.0.0.0:"+portnum;
     MessengerServiceWorker service;
 
     ServerBuilder builder;
@@ -422,8 +430,23 @@ void RunWorker(string port) {
     worker->Wait();
 }
 
+void ConnectToMaster(string maddress) {
+    master_address = maddress;
+    
+    shared_ptr<Channel> channel = grpc::CreateChannel(master_address, grpc::InsecureChannelCredentials());
+    masterConnection = new WorkerToMasterConnection(channel);
+}
+
 int main(int argc, char** argv) {
-    RunWorker(argv[1]);
+    
+    pthread_t workerThread;
+	pthread_create(&workerThread, NULL, RunWorker, (void*) argv[1]);
+    
+    ConnectToMaster("0.0.0.0:4632");
+    
+    while(true) {
+        continue;
+    }
     
     cout << "Worker shutting down\n";
     return 0;

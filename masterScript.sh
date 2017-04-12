@@ -10,6 +10,7 @@
 ./worker 4633 
 #export p2=$!
 
+#./worker 4634
 
 #./fbsd -p 4633
 
