@@ -151,7 +151,7 @@ string master_portnumber;
 class MessengerServiceMaster final : public MessengerMaster::Service {
   
    Status WorkerConnected(ServerContext* context, const WorkerAddress* request, Reply* reply) override {
-       cout << "New Worker Connected to Master\n";
+       cout << "Master - New Worker Connected to Master\n";
        
        string hostname = request->host();
        string portnumber = request->port();
@@ -174,7 +174,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             reply->set_secondary2(ADDRESS OF SECONDARY WORKER 2)
         */
         
-        cout << "Find primary and secondary workers for new client\n";
+        cout << "Master - Find primary and secondary workers for new client\n";
        
         int indexPrimary = -1;
         int indexSecondary1 = -1;
@@ -200,7 +200,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             else {
                 cout << status.error_code() << ": " << status.error_message()
                     << endl;
-                cout << "RPC failed\n";
+                cout << "Master - RPC failed\n";
             }
         }
         
@@ -292,7 +292,7 @@ void* RunMaster(void* v) {
     
     // Finally assemble the server.
     unique_ptr<Server> master(builder.BuildAndStart());
-    cout << "Master listening on " << address << endl;
+    cout << "Master - Master listening on " << address << endl;
 
     //setting up MasterHelper class
     masterInfo = MasterHelper(address);
@@ -326,13 +326,13 @@ int main(int argc, char** argv) {
     pthread_t masterThread;
 	pthread_create(&masterThread, NULL, RunMaster, NULL);
     
-    cout << "Thread started\n";
+    cout << "Master - Thread started\n";
     
     while(true) {
         continue;
     }
     
-    cout << "Master is Shutting Down\n";
+    cout << "Master - Master is Shutting Down\n";
     
     return 0;
 }
