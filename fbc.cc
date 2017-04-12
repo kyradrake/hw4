@@ -112,7 +112,6 @@ class MessengerClient {
                 workerStub = MessengerWorker::NewStub(channel);
             }
             
-            
             cout << "Connecting to Assigned Worker on Address: " << reply.msg() << endl;
         }
         else {

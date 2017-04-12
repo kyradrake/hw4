@@ -427,7 +427,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         cout << "Worker - Tell master how many clients are connected \n";
         
         //TESTING WITH ONLY 1. STILL HAVE TO WRITE THIS
-        reply->msg("1");
+        reply->set_msg("1");
         
         return Status::OK;
     }
