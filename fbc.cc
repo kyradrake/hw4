@@ -84,6 +84,12 @@ class MessengerClient {
         workerAddress = waddress;
     }
     
+    void rerouteConnection(string address){
+        workerAddress = address;
+        shared_ptr<Channel> channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+        workerStub = MessengerWorker::NewStub(channel);
+    }
+    
     void Connect() {
         if(workerStub == NULL){
             cout << "Server service has not been initialized." << endl;
@@ -95,7 +101,7 @@ class MessengerClient {
         request.set_username(username);
   
         //Container for the data from the server
-        Reply reply;
+        AssignedWorker reply;
 
         //Context for the client
         ClientContext context;
@@ -103,19 +109,24 @@ class MessengerClient {
         Status status = workerStub->Connect(&context, request, &reply);
         
         if(status.ok()) {
-            cout << reply.msg() << endl;
+            
+            primaryWorker = reply.primary();
+            secondaryWorker1 = reply.secondary1();
+            secondaryWorker2 = reply.secondary2();
             
             // if assigned worker is not same as current address, reset worker stub
-            if(reply.msg() != workerAddress) {
-                
-                shared_ptr<Channel> channel = grpc::CreateChannel(reply.msg(), grpc::InsecureChannelCredentials());
-                workerStub = MessengerWorker::NewStub(channel);
+            if(primaryWorker != workerAddress) {
+                rerouteConnection(primaryWorker);
             }
             
-            cout << "Connecting to Assigned Worker on Address: " << reply.msg() << endl;
+            cout << "Connecting to Assigned Worker on Address: " << primary.msg() << endl;
         }
         else {
             cout << "Error: " << status.error_code() << ": " << status.error_message() << endl;
+            
+            //send request to secondary worker 1 for FindPrimaryWorker() on the master
+            rerouteConnection(secondaryWorker1);
+            Connect();
         }
     }
 
@@ -154,6 +165,13 @@ class MessengerClient {
         else {
             cout << status.error_code() << ": " << status.error_message()
                 << endl;
+            
+            //send request to secondary worker 1 for FindPrimaryWorker() on the master
+            rerouteConnection(secondaryWorker1);
+            Connect();
+            
+            //re-call function for next attempt
+            List();
         } 
     }
 
@@ -186,6 +204,13 @@ class MessengerClient {
             cout << status.error_code() << ": " << status.error_message()
                 << endl;
             cout << "RPC failed\n";
+            
+            //send request to secondary worker 1 for FindPrimaryWorker() on the master
+            rerouteConnection(secondaryWorker1);
+            Connect();
+            
+            //re-call function for next attempt
+            Join(username2);
         }
     }
 
@@ -215,6 +240,13 @@ class MessengerClient {
             cout << status.error_code() << ": " << status.error_message()
                 << endl;
             cout << "RPC failed\n";
+            
+            //send request to secondary worker 1 for FindPrimaryWorker() on the master
+            rerouteConnection(secondaryWorker1);
+            Connect();
+            
+            //re-call function for next attempt
+            Leave(username2);
         }
     }
 
@@ -243,6 +275,13 @@ class MessengerClient {
             cout << status.error_code() << ": " << status.error_message()
                     << endl;
             return "RPC failed";
+            
+            //send request to secondary worker 1 for FindPrimaryWorker() on the master
+            rerouteConnection(secondaryWorker1);
+            Connect();
+            
+            //re-call function for next attempt
+            Login();
         }
     }
 
@@ -273,6 +312,24 @@ class MessengerClient {
                 stream->Write(m);
             }
             stream->WritesDone();
+            Status status = stream->Finish();
+            
+            if(status.ok()) {
+                return reply.msg();
+            }
+            else {
+                cout << status.error_code() << ": " << status.error_message()
+                        << endl;
+                return "RPC failed";
+
+                //send request to secondary worker 1 for FindPrimaryWorker() on the master
+                rerouteConnection(secondaryWorker1);
+                Connect();
+
+                //re-call function for next attempt
+                Chat(messages, usec);
+            }
+            
             /*
             }
             else {
@@ -311,6 +368,23 @@ class MessengerClient {
             while(stream->Read(&m)){
                 cout << m.username() << " -- " << m.msg() << endl;
             }
+            Status status = stream->Finish();
+            
+            if(status.ok()) {
+                return reply.msg();
+            }
+            else {
+                cout << status.error_code() << ": " << status.error_message()
+                        << endl;
+                return "RPC failed";
+
+                //send request to secondary worker 1 for FindPrimaryWorker() on the master
+                rerouteConnection(secondaryWorker1);
+                Connect();
+
+                //re-call function for next attempt
+                Chat(messages, usec);
+            }
         });
 
         //Wait for the threads to finish
@@ -320,6 +394,9 @@ class MessengerClient {
 
     private:
     string username;
+    string primaryWorker;
+    string secondaryWorker1;
+    string secondaryWorker2;
     //unique_ptr<MessengerServer::Stub> serverStub;
     unique_ptr<MessengerMaster::Stub> masterStub;
     unique_ptr<MessengerWorker::Stub> workerStub;
