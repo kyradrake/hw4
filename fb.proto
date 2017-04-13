@@ -95,10 +95,22 @@ message AssignedWorkers {
 }
 
 message Message {
+
   //Username who sent the message
   string username = 1;
+  
   //Message from the user
   string msg = 2;
+  
   //Time the message was sent
   google.protobuf.Timestamp timestamp = 3;
+  
+  //Primary Worker
+  string primary = 4;
+  
+  //Secondary Worker 1
+  string secondary1 = 5;
+  
+  //Secondary Worker 2
+  string secondary2 = 6;
 }
