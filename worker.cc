@@ -46,6 +46,7 @@
 #include <memory>
 #include <string>
 #include <stdlib.h>
+#include <vector>
 #include <unistd.h>
 #include <google/protobuf/util/time_util.h>
 #include <grpc++/grpc++.h>
@@ -120,9 +121,11 @@ class WorkerToMasterConnection {
         }
     }
     
-    string FindPrimaryWorker() {
+    vector<string> FindPrimaryWorker() {
         if(masterStub == NULL) {
-            return "NULL ERROR";
+            vector<string> error;
+            error.push_back("NULL ERROR");
+            return error;
         }
         
         // Data being sent to the server
@@ -140,12 +143,21 @@ class WorkerToMasterConnection {
         if(status.ok()) {
             cout << "Worker - Primary Worker: " << reply.primary() << endl;
             
-            return reply.primary();
+            vector<string> workers;
+            
+            workers.push_back(reply.primary());
+            workers.push_back(reply.secondary1());
+            workers.push_back(reply.secondary2());
+            
+            return workers;
         }
         else {
             cout << "Worker - Error: " << status.error_code() << ": " << status.error_message() << endl;
             
-            return "ERROR";
+            vector<string> workers;
+            workers.push_back("ERROR");
+            
+            return workers;
         }
     }
     
@@ -281,60 +293,20 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     // Client initally connects to a known server address
     // Server replies with address of the master process
     // client process -> server process
-    Status Connect(ServerContext* context, const Request* request, Reply* reply) override {
+    Status Connect(ServerContext* context, const Request* request, AssignedWorkers* reply) override {
         cout << "Client Connecting\n";
         
-        /*
-        if (isMaster) {
-            cout << "Redirecting client to " << master_address << endl;
-            reply->set_msg(master_address);
-        }
-        else {
-            // TO DO -------------------------------------------------------- 
-            reply->set_msg("I'm not master, fix later");
+        vector<string> assignedWorkers = masterConnection->FindPrimaryWorker();
+        
+        if(assignedWorkers.size() != 3) {
+            return Status::CANCELLED;
         }
         
-        */
-        
-        string assignedWorker = masterConnection->FindPrimaryWorker();
-        cout << "Assigned Worker is: " << assignedWorker << endl;
-        
-        reply->set_msg(workerAddress);
+        reply->set_primary(assignedWorkers[0]);
+        reply->set_secondary1(assignedWorkers[1]);
+        reply->set_secondary2(assignedWorkers[2]);
         
         return Status::OK; 
-        
-        
-        
-        /* 
-            TO DO ----------------------------------------------------------------------
-            Should call FindPrimaryWorker on each of the servers and then determine Primary, Secondary1, and Secondary2
-            
-            To do that the master needs to know each of the servers
-            Add a RPC for a server to "find" master, and create a MessengerServer service for each of them
-            
-            A temporary solution would be to hardcode the server address/port on local host 
-            Or possibly hardcode the worker address/port 
-            Forget about secondary workers for now
-        
-        */
-        /*
-        int min_clients_connected = 999999;
-        string worker_address = "";
-        
-        if (worker_db.size() == 0) {
-            cout << "Error: No workers in the worker database." << endl;
-            return Status::OK;
-        }
-        
-        for (Worker w: worker_db) {
-            if (w.numClientsConnected < min_clients_connected) {
-                worker_address = w.hostname + ":" + w.portnumber; //I think this is the correct syntax
-                min_clients_connected = w.numClientsConnected;
-            }
-        }
-        
-        reply->set_msg(worker_address);
-        return Status::OK; */
     }
     
     Status Chat(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {

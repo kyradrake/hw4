@@ -51,7 +51,7 @@ service MessengerWorker {
     rpc Leave (Request) returns (Reply) {}
     
     // Client connects to the worker, re-routes to their dedicated worker
-    rpc Connect (Request) returns (Reply) {}
+    rpc Connect (Request) returns (AssignedWorkers) {}
     
     // Client sends chats to worker
     rpc Chat (stream Message) returns (stream Message) {}
