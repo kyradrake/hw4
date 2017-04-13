@@ -467,6 +467,9 @@ int main(int argc, char** argv) {
     pthread_t workerThread;
 	pthread_create(&workerThread, NULL, RunWorker, NULL);
     
+    // Sleep in case worker tries to connect before master is running
+    usleep(10);
+    
     ConnectToMaster(host, port);
     
     while(true) {

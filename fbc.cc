@@ -57,6 +57,7 @@ using hw4::Message;
 using hw4::ListReply;
 using hw4::Request;
 using hw4::Reply;
+using hw4::AssignedWorkers;
 using hw4::MessengerMaster;
 using hw4::MessengerWorker;
 
@@ -101,7 +102,7 @@ class MessengerClient {
         request.set_username(username);
   
         //Container for the data from the server
-        AssignedWorker reply;
+        AssignedWorkers reply;
 
         //Context for the client
         ClientContext context;
@@ -119,7 +120,7 @@ class MessengerClient {
                 rerouteConnection(primaryWorker);
             }
             
-            cout << "Connecting to Assigned Worker on Address: " << primary.msg() << endl;
+            cout << "Connecting to Assigned Worker on Address: " << primaryWorker << endl;
         }
         else {
             cout << "Error: " << status.error_code() << ": " << status.error_message() << endl;
@@ -299,7 +300,7 @@ class MessengerClient {
         shared_ptr<ClientReaderWriter<Message, Message>> stream(workerStub->Chat(&context));
 
         //Thread used to read chat messages and send them to the server
-        thread writer([uname, messages, usec, stream]() {  
+        thread writer([uname, messages, usec, stream, this]() {  
             //if(usec == "n") { 
             string input = "Set Stream";
 
@@ -314,13 +315,9 @@ class MessengerClient {
             stream->WritesDone();
             Status status = stream->Finish();
             
-            if(status.ok()) {
-                return reply.msg();
-            }
-            else {
-                cout << status.error_code() << ": " << status.error_message()
+            if(!status.ok()) {
+                cout << "Worker DIED " << status.error_code() << ": " << status.error_message()
                         << endl;
-                return "RPC failed";
 
                 //send request to secondary worker 1 for FindPrimaryWorker() on the master
                 rerouteConnection(secondaryWorker1);
@@ -363,20 +360,16 @@ class MessengerClient {
         });
 
         //Thread used to display chat messages from users that this client follows 
-        thread reader([uname, stream]() {
+        thread reader([uname, stream, this, messages, usec]() {
             Message m;
             while(stream->Read(&m)){
                 cout << m.username() << " -- " << m.msg() << endl;
             }
             Status status = stream->Finish();
             
-            if(status.ok()) {
-                return reply.msg();
-            }
-            else {
-                cout << status.error_code() << ": " << status.error_message()
+            if(!status.ok()) {
+                cout << "Worker DIED " << status.error_code() << ": " << status.error_message()
                         << endl;
-                return "RPC failed";
 
                 //send request to secondary worker 1 for FindPrimaryWorker() on the master
                 rerouteConnection(secondaryWorker1);
