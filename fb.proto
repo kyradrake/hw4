@@ -41,6 +41,9 @@ service MessengerMaster {
     
     // Returns the primary worker - the worker with least clients connected
     rpc FindPrimaryWorker (Request) returns (AssignedWorkers) {}
+    
+    // managing database on the master
+    rpc LoginMaster (Request) returns (Reply) {}
 }
 
 // The service definition for the worker processes

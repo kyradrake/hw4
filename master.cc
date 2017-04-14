@@ -282,7 +282,40 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         */
         
         return Status::OK;
-   }
+    }
+    
+    Status LoginMaster(ServerContext* context, const Request* request, Reply* reply) override {
+        string username = request->username();
+        string address = request->arguments(0);
+        
+        //check to see if username already exists
+        bool alreadyExists = false;
+        for(int i = 0; i < client_db.size(); i++){
+            if(client_db[i].username == username){
+                alreadyExists = true;
+            }
+        }
+        
+        //if the username does not already exist, add it to the database
+        if(!alreadyExists){
+            Client client;
+            client.username = username;
+            
+            //find existing WorkerProcess to align with
+            for(int i = 0; i < masterInfo.listWorkers.size(); i++){
+                if(masterInfo.listWorkers[i]->hostname == address){
+                    client.primaryWorker = masterInfo.listWorkers[i];
+                }
+            }
+            
+            client_db.push_back(client);
+            reply->set_msg("Login Successful!");
+        } else {
+            reply->set_msg("Welcome Back " + username);
+        }
+        
+        return Status::OK;
+    }
 };
 
 void* RunMaster(void* v) {
