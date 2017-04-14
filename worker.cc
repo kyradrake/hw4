@@ -79,6 +79,15 @@ using hw4::MessengerMaster;
 
 using namespace std;
 
+struct ClientFollower {
+    string username;
+    
+    ClientFollower(string uname) {
+        username = uname;
+    }
+}
+
+
 //Client struct that holds a user's username, followers, and users they follow
 struct Client {
     string username;
@@ -86,7 +95,7 @@ struct Client {
     int following_file_size;
     
     // usernames for the clients the user follows
-    vector<string> clientFollowers;
+    vector<ClientFollower> clientFollowers;
     
     // usernames for the clients who follow the user
     vector<string> clientFollowing;
