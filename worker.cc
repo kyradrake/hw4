@@ -161,7 +161,7 @@ class WorkerToWorkerConnection {
         connectedWorkerAddress = waddress;
         workerStub = MessengerWorker::NewStub(channel);
     }
-}
+};
 
 // struct to hold information about other clients
 struct ClientFollower {
@@ -174,7 +174,7 @@ struct ClientFollower {
     ClientFollower(string uname) {
         username = uname;
     }
-}
+};
 
 
 //Client struct that holds a user's username, followers, and users they follow
