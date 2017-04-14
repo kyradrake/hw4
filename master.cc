@@ -78,19 +78,6 @@ using hw4::MessengerWorker;
 
 using namespace std;
 
-//Client struct that holds a user's username, followers, and users they follow
-struct Client {
-    string username;
-    bool connected = true;
-    int following_file_size = 0;
-    vector<Client*> client_followers;
-    vector<Client*> client_following;
-    ServerReaderWriter<Message, Message>* stream = 0;
-    bool operator==(const Client& c1) const{
-        return (username == c1.username);
-    }
-};
-
 //Worker struct
 class WorkerProcess {
     public:
@@ -108,6 +95,26 @@ class WorkerProcess {
         hostname = h;
         portnumber = p;
         workerStub = MessengerWorker::NewStub(c);
+    }
+};
+
+//Client struct that holds a user's username, followers, and users they follow
+struct Client {
+    string username;
+   
+    //int following_file_size = 0;
+    
+    // usernames for the clients the user follows
+    vector<string> clientFollowers;
+    
+    // usernames for the clients who follow the user
+    vector<string> clientFollowing;
+    
+    // pointer to primary worker assigned to client
+    WorkerProcess* primaryWorker;
+    
+    bool operator==(const Client& c1) const{
+        return (username == c1.username);
     }
 };
 

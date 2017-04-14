@@ -44,6 +44,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <queue>
 #include <string>
 #include <stdlib.h>
 #include <vector>
@@ -81,11 +82,16 @@ using namespace std;
 //Client struct that holds a user's username, followers, and users they follow
 struct Client {
     string username;
-    bool connected = true;
-    int following_file_size = 0;
-    vector<Client*> client_followers;
-    vector<Client*> client_following;
-    ServerReaderWriter<Message, Message>* stream = 0;
+    
+    // usernames for the clients the user follows
+    vector<string> clientFollowers;
+    
+    // usernames for the clients who follow the user
+    vector<string> clientFollowing;
+    
+    // queue of messages to send to user
+    queue<string> messagesToWrite;
+    
     bool operator==(const Client& c1) const{
         return (username == c1.username);
     }
