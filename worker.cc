@@ -261,7 +261,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     
     Status Chat(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
         
-        /*
         Message message;
         Client *c;
         //Read messages until the client disconnects
