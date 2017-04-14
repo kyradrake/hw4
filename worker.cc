@@ -83,6 +83,8 @@ using namespace std;
 struct Client {
     string username;
     
+    int following_file_size;
+    
     // usernames for the clients the user follows
     vector<string> clientFollowers;
     
@@ -281,8 +283,10 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             
             //If message = "Set Stream", print the first 20 chats from the people you follow
             else{
+                /*
                 if(c->stream==0)
                     c->stream = stream;
+                    */
                 string line;
                 vector<string> newest_twenty;
                 ifstream in(username+"following.txt");
@@ -308,6 +312,22 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 continue;
             }
             
+            
+            // write new messages to client
+            while(c->messagesToWrite.size() > 0) {
+                // pop top message from client's queue
+                string m = c->messagesToWrite.front();
+                c->messagesToWrite.pop();
+                
+                Message new_msg;
+                new_msg.set_msg(m);
+
+                // send popped message to client
+                stream->Write(new_msg);
+            }
+            
+            
+            /*
             //Send the message to each follower's stream
             vector<Client*>::const_iterator it;
             for(it = c->client_followers.begin(); it!=c->client_followers.end(); it++){
@@ -324,11 +344,8 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 ofstream user_file(temp_username + ".txt",ios::app|ios::out|ios::in);
                 user_file << fileinput;
             }
+            */
         }
-        
-        //If the client disconnected from Chat Mode, set connected to false
-        c->connected = false;
-        */
         
         return Status::OK;
     }
