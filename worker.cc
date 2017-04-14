@@ -79,38 +79,9 @@ using hw4::MessengerMaster;
 
 using namespace std;
 
-struct ClientFollower {
-    string username;
-    
-    ClientFollower(string uname) {
-        username = uname;
-    }
-}
-
-
-//Client struct that holds a user's username, followers, and users they follow
-struct Client {
-    string username;
-    
-    int following_file_size;
-    
-    // usernames for the clients the user follows
-    vector<ClientFollower> clientFollowers;
-    
-    // usernames for the clients who follow the user
-    vector<string> clientFollowing;
-    
-    // queue of messages to send to user
-    queue<string> messagesToWrite;
-    
-    bool operator==(const Client& c1) const{
-        return (username == c1.username);
-    }
-};
-
 class WorkerToMasterConnection {
     public:
-        unique_ptr<MessengerMaster::Stub> masterStub;
+    unique_ptr<MessengerMaster::Stub> masterStub;
     
     
     WorkerToMasterConnection(shared_ptr<Channel> channel){
@@ -181,6 +152,51 @@ class WorkerToMasterConnection {
     }
 };
 
+class WorkerToWorkerConnection {
+    public:
+    string connectedWorkerAddress;
+    unique_ptr<MessengerWorker::Stub> workerStub;
+    
+    WorkerToWorkerConnection(string waddress, shared_ptr<Channel> channel) {
+        connectedWorkerAddress = waddress;
+        workerStub = MessengerWorker::NewStub(channel);
+    }
+}
+
+// struct to hold information about other clients
+struct ClientFollower {
+    string username;
+    
+    // worker assigned to this client
+    // used to send chat messages to this client
+    WorkerToWorkerConnection* worker; 
+    
+    ClientFollower(string uname) {
+        username = uname;
+    }
+}
+
+
+//Client struct that holds a user's username, followers, and users they follow
+struct Client {
+    string username;
+    
+    int following_file_size;
+    
+    // usernames for the clients the user follows
+    vector<ClientFollower> clientFollowers;
+    
+    // usernames for the clients who follow the user
+    vector<string> clientFollowing;
+    
+    // queue of messages to send to user
+    queue<string> messagesToWrite;
+    
+    bool operator==(const Client& c1) const{
+        return (username == c1.username);
+    }
+};
+
 //Vector that stores every client that has been created
 vector<Client> client_db;
 
@@ -188,6 +204,7 @@ string workerAddress = "";
 string masterAddress = "";
 
 WorkerToMasterConnection* masterConnection;
+vector<WorkerToWorkerConnection*> workerConnections;
 
 //Helper function used to find a Client object given its username
 int find_user(string username){
