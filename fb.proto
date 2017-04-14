@@ -44,6 +44,12 @@ service MessengerMaster {
     
     // managing database on the master
     rpc LoginMaster (Request) returns (Reply) {}
+    
+    // joins a user on the master database
+    rpc JoinMaster (Request) returns (Reply) {}
+    
+    // leaves a user on the master database
+    rpc LeaveMaster (Request) returns (Reply) {}
 }
 
 // The service definition for the worker processes
