@@ -94,7 +94,7 @@ WorkerToMasterConnection* masterConnection;
 vector<WorkerToWorkerConnection*> workerConnections;
 
 // clients connected to worker
-vector<Client> clientsConnected;
+vector<Client*> clientsConnected;
 
 // worker's own address
 string workerAddress = "";
@@ -118,15 +118,6 @@ struct ClientFollower {
     void updateWorker(WorkerToWorkerConnection* w) {
         worker = w;
     }
-    /*
-        TO DO
-        
-        At some point the worker needs to be initialized.
-        Maybe this should be done in the constructor
-        
-        We need an RPC call to the master to do this (i.e. use the masterConnection object)...
-        Need to add more Proto stuff :/
-    */
 };
 
 
@@ -264,8 +255,8 @@ class WorkerToMasterConnection {
             
             //should we check if the user is already in the database before updating?
             
-            Client client;
-            client.username = username;
+            Client* client = new Client();
+            client->username = username;
             
             //add in followers
             for(int i = 0; i < reply.followers().size(); i++){
@@ -278,12 +269,12 @@ class WorkerToMasterConnection {
                 
                 ClientFollower follower(fUsername, fWorker);
                 
-                client.clientFollowers.push_back(follower);
+                client->clientFollowers.push_back(follower);
             }
             
             //add in following
             for(int i = 0; i < reply.following().size(); i++){
-                client.clientFollowing.push_back(reply.following(i));
+                client->clientFollowing.push_back(reply.following(i));
             }
             
             clientsConnected.push_back(client);
@@ -331,8 +322,8 @@ class WorkerToWorkerConnection {
 //Helper function used to find a Client object given its username
 int findUser(string username){
     int index = 0;
-    for(Client c : clientsConnected){
-        if(c.username == username){
+    for(Client* c : clientsConnected){
+        if(c->username == username){
             return index;
         }
         index++;
@@ -493,7 +484,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         while(stream->Read(&message)) {
             string username = message.username();
             int user_index = findUser(username);
-            c = &clientsConnected[user_index];
+            c = clientsConnected[user_index];
             
             //Write the current message to "username.txt"
             string filename = username+".txt";
@@ -625,6 +616,8 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         string forUsername = request->for_username();
         string message = request->msg();
         
+        // Find client in database message is for
+        //int clientIndex = findClient
         
         /*
             TO DO
