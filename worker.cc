@@ -80,6 +80,63 @@ using hw4::MessengerMaster;
 
 using namespace std;
 
+class WorkerToMasterConnection;
+class WorkerToWorkerConnection;
+
+WorkerToMasterConnection* masterConnection;
+vector<WorkerToWorkerConnection*> workerConnections;
+
+// worker's own address
+string workerAddress = "";
+
+// master's address
+string masterAddress = "";
+
+// struct to hold information about other clients
+struct ClientFollower {
+    string username;
+    
+    // worker assigned to this client
+    // used to send chat messages to this client
+    WorkerToWorkerConnection* worker; 
+     
+    ClientFollower(string uname) {
+        username = uname;
+    }
+    
+    
+    /*
+        TO DO
+        
+        At some point the worker needs to be initialized.
+        Maybe this should be done in the constructor
+        
+        We need an RPC call to the master to do this (i.e. use the masterConnection object)...
+        Need to add more Proto stuff :/
+    */
+};
+
+
+//Client struct that holds a user's username, followers, and users they follow
+struct Client {
+    string username;
+    
+    int following_file_size;
+    
+    // usernames for the clients the user follows
+    vector<ClientFollower> clientFollowers;
+    
+    // usernames for the clients who follow the user
+    vector<string> clientFollowing;
+    
+    // queue of messages to send to user
+    queue<string> messagesToWrite;
+    
+    bool operator==(const Client& c1) const{
+        return (username == c1.username);
+    }
+};
+
 class WorkerToMasterConnection {
     public:
     unique_ptr<MessengerMaster::Stub> masterStub;
@@ -132,7 +189,8 @@ class WorkerToMasterConnection {
             return clientsPrimaryWorker;
         }
         else {
-            return "Failure";
+            cout << "ERROR - GetClientsPrimaryWorker Failed";
+            return "";
         }
     }
     
@@ -208,59 +266,9 @@ class WorkerToWorkerConnection {
     }
 };
 
-// struct to hold information about other clients
-struct ClientFollower {
-    string username;
-    
-    // worker assigned to this client
-    // used to send chat messages to this client
-    WorkerToWorkerConnection* worker; 
-     
-    ClientFollower(string uname) {
-        username = uname;
-    }
-    
-    
-    /*
-        TO DO
-        
-        At some point the worker needs to be initialized.
-        Maybe this should be done in the constructor
-        
-        We need an RPC call to the master to do this (i.e. use the masterConnection object)...
-        Need to add more Proto stuff :/
-    */
-};
-
-
-//Client struct that holds a user's username, followers, and users they follow
-struct Client {
-    string username;
-    
-    int following_file_size;
-    
-    // usernames for the clients the user follows
-    vector<ClientFollower> clientFollowers;
-    
-    // usernames for the clients who follow the user
-    vector<string> clientFollowing;
-    
-    // queue of messages to send to user
-    queue<string> messagesToWrite;
-    
-    bool operator==(const Client& c1) const{
-        return (username == c1.username);
-    }
-};
-
 //Vector that stores every client that has been created
 vector<Client> clientsConnected;
 
-string workerAddress = "";
-string masterAddress = "";
-
-WorkerToMasterConnection* masterConnection;
-vector<WorkerToWorkerConnection*> workerConnections;
 
 //Helper function used to find a Client object given its username
 int findUser(string username){
@@ -276,17 +284,17 @@ int findUser(string username){
 
 // Searches for a connection to a worker with the specified address
 // If it cannot be found in the database, establish a connection to the worker
-WorkerToWorkerConnection* findWorker(string workerAddress) {
+WorkerToWorkerConnection* findWorker(string wAddress) {
     // first, look for worker in the database
     for(WorkerToWorkerConnection* w : workerConnections) {
-        if(w->connectedWorkerAddress == workerAddress) {
+        if(w->connectedWorkerAddress == wAddress) {
             return w;
         }
     }
     
     // if worker isn't found, create a connection to it in the database
-    shared_ptr<Channel> channel = grpc::CreateChannel(workerAddress, grpc::InsecureChannelCredentials());
-    WorkerToWorkerConnection* w = new WorkerToWorkerConnection(workerAddress, channel);
+    shared_ptr<Channel> channel = grpc::CreateChannel(wAddress, grpc::InsecureChannelCredentials());
+    WorkerToWorkerConnection* w = new WorkerToWorkerConnection(wAddress, channel);
     workerConnections.push_back(w);
     return w;
 }
