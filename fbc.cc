@@ -54,7 +54,6 @@ using grpc::ClientReaderWriter;
 using grpc::ClientWriter;
 using grpc::Status;
 using hw4::Message;
-using hw4::ListReply;
 using hw4::Request;
 using hw4::Reply;
 using hw4::AssignedWorkers;

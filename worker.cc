@@ -136,6 +136,8 @@ struct Client {
     // queue of messages to send to user
     queue<string> messagesToWrite;
     
+    ServerReaderWriter<Message, Message>* stream = 0;
+    
     bool operator==(const Client& c1) const{
         return (username == c1.username);
     }
@@ -622,7 +624,24 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         string message = request->msg();
         
         // Find client in database message is for
-        //int clientIndex = findClient
+        int clientIndex = findUser(forUsername);
+        Client* client = clientsConnected[clientIndex];
+        
+        // Add message to client's queue
+        //client->messagesToWrite.push(message);
+        
+        // Write message to client's stream
+        if(client->stream != 0) {
+            Message newMsg; 
+            newMsg.set_msg(message);
+            
+            client->stream->Write(newMsg);
+        }
+        else {
+            /* 
+                What TO DO Here????  
+            */
+        }
         
         /*
             TO DO
@@ -636,7 +655,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         */
         
         
-        reply->set_msg("");
+        reply->set_msg("Success");
         
         return Status::OK;
     }

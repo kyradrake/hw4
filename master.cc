@@ -69,13 +69,13 @@ using grpc::ClientReader;
 using grpc::ClientReaderWriter;
 using grpc::ClientWriter;
 using hw4::Message;
-using hw4::ListReply;
 using hw4::WorkerAddress;
 using hw4::Request;
 using hw4::Reply;
 using hw4::AssignedWorkers;
 using hw4::MessengerMaster;
 using hw4::MessengerWorker;
+using hw4::ClientListReply;
 
 using namespace std;
 
@@ -463,10 +463,10 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
 
             //set following
             for(int i = 0; i < client_db[userIndex].clientFollowing.size(); i++){
-                reply->add_following(client_db[userIndex].clientFollowers[i]);
+                reply->add_following(client_db[userIndex].clientFollowing[i]);
             }
         } else {
-            cout << "ERROR: user not found in the database in UpdateClientData"
+            cout << "ERROR: user not found in the database in UpdateClientData";
         }
         return Status::OK;
     }
