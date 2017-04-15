@@ -254,7 +254,7 @@ struct Client {
 };
 
 //Vector that stores every client that has been created
-vector<Client> client_db;
+vector<Client> clientsConnected;
 
 string workerAddress = "";
 string masterAddress = "";
@@ -263,9 +263,9 @@ WorkerToMasterConnection* masterConnection;
 vector<WorkerToWorkerConnection*> workerConnections;
 
 //Helper function used to find a Client object given its username
-int find_user(string username){
+int findUser(string username){
     int index = 0;
-    for(Client c : client_db){
+    for(Client c : clientsConnected){
         if(c.username == username){
             return index;
         }
@@ -427,7 +427,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         while(stream->Read(&message)) {
             string username = message.username();
             int user_index = find_user(username);
-            c = &client_db[user_index];
+            c = &clientsConnected[user_index];
             
             //Write the current message to "username.txt"
             string filename = username+".txt";
