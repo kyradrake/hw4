@@ -50,12 +50,15 @@ service MessengerMaster {
     
     // leaves a user on the master database
     rpc LeaveMaster (Request) returns (Reply) {}
+    
+    // prints all of the client data in the master database
+    rpc ListMaster (Request) returns (Reply) {}
 }
 
 // The service definition for the worker processes
 service MessengerWorker {
     rpc Login (Request) returns (Reply) {}
-    rpc List (Request) returns (ListReply) {}
+    rpc List (Request) returns (Reply) {}
     rpc Join (Request) returns (Reply) {}
     rpc Leave (Request) returns (Reply) {}
     
