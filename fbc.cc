@@ -141,27 +141,19 @@ class MessengerClient {
         
         //Data being sent to the server
         Request request;
-        request.set_username(username);
   
         //Container for the data from the server
-        ListReply list_reply;
+        Reply reply;
 
         //Context for the client
         ClientContext context;
 
-        Status status = workerStub->List(&context, request, &list_reply);
+        Status status = workerStub->List(&context, request, &reply);
 
-        //Loop through list_reply.all_rooms and list_reply.joined_rooms
         //Print out the name of each room 
         if(status.ok()) {
-            cout << "All Rooms: \n";
-            for(string s : list_reply.all_rooms()) {
-                cout << s << endl;
-            }
-            cout << "Following: \n";
-            for(string s : list_reply.joined_rooms()) {
-                cout << s << endl;
-            }
+            string totalList = reply.msg();
+            cout << totalList << endl;
         }
         else {
             cout << status.error_code() << ": " << status.error_message()

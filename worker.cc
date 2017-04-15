@@ -245,8 +245,25 @@ int find_user(string username){
 class MessengerServiceWorker final : public MessengerWorker::Service {
 
     //Sends the list of total rooms and joined rooms to the client
-    Status List(ServerContext* context, const Request* request, ListReply* list_reply) override {
+    Status List(ServerContext* context, const Request* request, Reply* reply) override {
         
+        //Data being sent to the server
+        Request requestMaster;
+  
+        //Container for the data from the server
+        Reply replyMaster;
+
+        //Context for the client
+        ClientContext contextClient;
+
+        Status status = masterConnection->masterStub->ListMaster(&contextClient, requestMaster, &replyMaster);
+        
+        if(status.ok()) {
+            string msgForward = replyMaster.msg();
+            reply->set_msg(msgForward);
+        } else {
+            cout << "SOMETHING BAD HAPPENED IN LIST" << endl;
+        }
         return Status::OK;
     }
 

@@ -386,6 +386,43 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         return Status::OK;
     }
+    
+    Status ListMaster(ServerContext* context, const Request* request, Reply* reply) override {
+        
+        // empty string to return with the list data
+        string totalList = "";
+
+        // iterate through all of the users
+        for (int i = 0; i < client_db.size(); i++) {
+
+            // our name
+            totalList += "User: " + client_db[i].username + "\n";
+            
+            // people who we follow
+            totalList += "Following: [";
+            for (int j = 0; j < client_db[i].clientFollowing.size(); j++) {
+                totalList += client_db[i].clientFollowing[j];
+                if (j != client_db[i].clientFollowing.size() - 1) {
+                    totalList += ", ";
+                }
+            }
+            totalList += "]\n";
+            
+            // people who follow us
+            totalList += "Followers: [";
+            for (int j = 0; j < client_db[i].clientFollowers.size(); j++) {
+                totalList += client_db[i].clientFollowers[j];
+                if (j != client_db[i].clientFollowers.size() - 1) {
+                    totalList += ", ";
+                }
+            }
+            totalList += "]\n";
+            
+            totalList += "-------------------------------------------------------------\n";
+        }
+        
+        reply->set_msg(totalList);
+    }
 };
 
 void* RunMaster(void* v) {
