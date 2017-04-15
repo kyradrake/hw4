@@ -39,6 +39,9 @@ service MessengerMaster {
     // Initalize worker on the worker database
     rpc WorkerConnected (WorkerAddress) returns (Reply) {}
     
+    // Get the address for a client's primary worker
+    rpc GetClientsPrimaryWorker (Request) returns (Reply) {}
+    
     // Returns the primary worker - the worker with least clients connected
     rpc FindPrimaryWorker (Request) returns (AssignedWorkers) {}
     
