@@ -89,7 +89,8 @@ class WorkerToMasterConnection {
         masterStub = MessengerMaster::NewStub(channel);
     }
     
-    
+    // notifies master that a new worker process has begun
+    // sends the workers host and port to master
     void WorkerConnected(string workerHost, string workerPort) {
         // Data sent to master 
         WorkerAddress request;
@@ -109,6 +110,29 @@ class WorkerToMasterConnection {
         }
         else {
             cout << "Worker - Error: " << status.error_code() << ": " << status.error_message() << endl;
+        }
+    }
+    
+    // sends request to master to get the address for a client's primary worker
+    string GetClientsPrimaryWorker(string username) {
+        // Data sent to master
+        Request request;
+        request.set_username(username);
+        
+        // Container for the data from the master
+        Reply reply;
+        
+        // Context for the worker
+        ClientContext context;
+        
+        Status status = masterStub->GetClientsPrimaryWorker(&context, request, &reply);
+        
+        if(status.ok()) {
+            string clientsPrimaryWorker = reply.msg();
+            return clientsPrimaryWorker;
+        }
+        else {
+            return "Failure";
         }
     }
     
@@ -161,6 +185,14 @@ class WorkerToWorkerConnection {
     WorkerToWorkerConnection(string waddress, shared_ptr<Channel> channel) {
         connectedWorkerAddress = waddress;
         workerStub = MessengerWorker::NewStub(channel);
+    }
+    
+    /* 
+        NOTE
+        Not sure if we will use this but it could come in handy at some point
+    */
+    bool operator==(const WorkerToWorkerConnection& w1) const{
+        return (connectedWorkerAddress == w1.connectedWorkerAddress);
     }
     
     void SendMessageToFollower() {
@@ -240,6 +272,23 @@ int find_user(string username){
         index++;
     }
     return -1;
+}
+
+// Searches for a connection to a worker with the specified address
+// If it cannot be found in the database, establish a connection to the worker
+WorkerToWorkerConnection* findWorker(string workerAddress) {
+    // first, look for worker in the database
+    for(WorkerToWorkerConnection* w : workerConnections) {
+        if(w->connectedWorkerAddress == workerAddress) {
+            return w;
+        }
+    }
+    
+    // if worker isn't found, create a connection to it in the database
+    shared_ptr<Channel> channel = grpc::CreateChannel(workerAddress, grpc::InsecureChannelCredentials());
+    WorkerToWorkerConnection* w = new WorkerToWorkerConnection(workerAddress, channel);
+    workerConnections.push_back(w);
+    return w;
 }
 
 class MessengerServiceWorker final : public MessengerWorker::Service {
