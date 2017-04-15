@@ -133,9 +133,6 @@ struct Client {
     // usernames for the clients who follow the user
     vector<string> clientFollowing;
     
-    // queue of messages to send to user
-    queue<string> messagesToWrite;
-    
     ServerReaderWriter<Message, Message>* stream = 0;
     
     bool operator==(const Client& c1) const{
@@ -493,6 +490,11 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             int user_index = findUser(username);
             c = clientsConnected[user_index];
             
+            // initialize client stream if it hasn't been yet
+            if(c->stream == 0) {
+                c->stream = stream;
+            }
+            
             //Write the current message to "username.txt"
             string filename = username+".txt";
             ofstream user_file(filename,ios::app|ios::out|ios::in);
@@ -535,19 +537,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 continue;
             }
             
-            
-            // write new messages to client
-            while(c->messagesToWrite.size() > 0) {
-                // pop top message from client's queue
-                string m = c->messagesToWrite.front();
-                c->messagesToWrite.pop();
-                
-                Message new_msg;
-                new_msg.set_msg(m);
-
-                // send popped message to client
-                stream->Write(new_msg);
-            }
             
             // send message to each follower
             for(ClientFollower follower : c->clientFollowers) {
@@ -626,9 +615,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         int clientIndex = findUser(username);
         Client* client = clientsConnected[clientIndex];
         
-        // Add message to client's queue
-        //client->messagesToWrite.push(message);
-        
         // Write message to client's stream
         if(client->stream != 0) {
             Message newMsg; 
@@ -645,11 +631,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         /*
             TO DO
             
-            This function should find the forUsername in the client DB
-            The message should be pushed onto that client's message queue
-            
-            The fromUsername may not be needed, but is added in case
-        
             It would be a good idea to make sure this is the assigned "Primary Worker" for the forUsername. If it's not, then something went wrong and the message got routed to the wrong worker
         */
         
