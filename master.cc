@@ -498,6 +498,62 @@ void* RunMaster(void* v) {
     //thread masterThread(threadWait, master);
 }
 
+//heartbeat function
+void* Heartbeat(void* v){
+    while(true){
+        for(int i = 0; i < masterInfo.listWorkers.size(); i++){
+            //MAY WANT TO ADD A SLEEP IN HERE JUST SO WE DON'T FLOOD OURSELVES LMAO
+            
+            //Send lub-DUB
+            Request request;
+            Reply reply;
+            ClientContext context;
+            Status status = masterInfo.listWorkers[i]->workerStub->CheckWorker(&context, request, &reply);
+            
+            if(!status.ok()){
+                cout << "lub-DUB FAILED, ABORT ABORT!! DO SOMETHING HERE" << endl;
+                
+                /*
+                * if lub-dub fails
+                * see if other workers on the same server are alive
+                * if so, one of those workers needs to restart another worker
+                * write a helper function to let everybody know that some dudes lub-dubber be no longer lub-dubbin'
+                * if no-one else responds from the helper function, we know that the entire server is dead
+                */
+                
+                int deadIndex = i;
+                string serverToCheck = masterInfo.listWorkers[deadIndex]->hostname;
+                bool isServerDead = false;
+                
+                //look for a worker on the same server, see if it's only our worker or the whole server is dead
+                for(int j = 0; j < masterInfo.listWorkers.size(); j++){
+                    if(j != deadIndex && serverToCheck == masterInfo.listWorkers[j]->hostname && serverToCheck != master_hostname){
+                        
+                        //Send lub-DUB
+                        Request requestInner;
+                        Reply replyInner;
+                        ClientContext contextInner;
+                        Status statusInner = masterInfo.listWorkers[j]->workerStub->CheckWorker(&contextInner, requestInner, &replyInner);
+                        
+                        if(!statusInner.ok()){
+                            isServerDead = true;
+                        }
+                    }
+                }
+                
+                if(isServerDead){
+                    //server's dead, do what we need to do in here
+                } else {
+                    //worker's dead, do wwhta we need to do in here
+                }
+            } else {
+                //FOR TESTING PURPOSES ONLY
+                cout << "lub-Dub" << endl;
+            }
+        }
+    }
+}
+
 int main(int argc, char** argv) {
     
     //default
@@ -521,6 +577,11 @@ int main(int argc, char** argv) {
 	pthread_create(&masterThread, NULL, RunMaster, NULL);
     
     cout << "Master - Thread started\n";
+    
+    pthread_t heartbeatThread;
+	pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
+    
+    cout << "Master - Heartbeat Thread started\n";
     
     while(true) {
         continue;

@@ -640,6 +640,14 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         return Status::OK;
     }
     
+    Status CheckWorker(ServerContext* context, const Request* request, Reply* reply) override {
+        cout << "Worker - Heartbeat\n";
+        
+        reply->set_msg("lub-DUB");
+        
+        return Status::OK;
+    }
+    
 };
 
 void* RunWorker(void* v) {
