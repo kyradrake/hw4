@@ -69,7 +69,7 @@ using grpc::ServerReaderWriter;
 using grpc::ServerWriter;
 using grpc::Status;
 using hw4::Message;
-using hw4::ListReply;
+using hw4::ClientListReply;
 using hw4::Request;
 using hw4::Reply;
 using hw4::WorkerAddress;
@@ -80,11 +80,21 @@ using hw4::MessengerMaster;
 
 using namespace std;
 
+class Client;
+
 class WorkerToMasterConnection;
 class WorkerToWorkerConnection;
 
+WorkerToWorkerConnection* findWorker(string wAddress);
+
+// connection to master
 WorkerToMasterConnection* masterConnection;
+
+// connections to other workers
 vector<WorkerToWorkerConnection*> workerConnections;
+
+// clients connected to worker
+vector<Client> clientsConnected;
 
 // worker's own address
 string workerAddress = "";
@@ -100,11 +110,14 @@ struct ClientFollower {
     // used to send chat messages to this client
     WorkerToWorkerConnection* worker; 
      
-    ClientFollower(string uname) {
+    ClientFollower(string uname, WorkerToWorkerConnection* w) {
         username = uname;
+        worker = w;
     }
     
-    
+    void updateWorker(WorkerToWorkerConnection* w) {
+        worker = w;
+    }
     /*
         TO DO
         
@@ -255,14 +268,22 @@ class WorkerToMasterConnection {
             client.username = username;
             
             //add in followers
-            for(int i = 0; i < ClientListReply.followers().size(); i++){
-                ClientFollower follower = ClientListReply.followers(i);
+            for(int i = 0; i < reply.followers().size(); i++){
+                // get follower's username 
+                string fUsername = reply.followers(i);
+                
+                // get follower's primary worker
+                string fWorkerAddress = masterConnection->GetClientsPrimaryWorker(fUsername);
+                WorkerToWorkerConnection* fWorker = findWorker(fWorkerAddress);
+                
+                ClientFollower follower(fUsername, fWorker);
+                
                 client.clientFollowers.push_back(follower);
             }
             
             //add in following
-            for(int i = 0; i < ClientListReply.following().size(); i++){
-                client.clientFollowing.push_back(ClientListReply.following(i));
+            for(int i = 0; i < reply.following().size(); i++){
+                client.clientFollowing.push_back(reply.following(i));
             }
             
             clientsConnected.push_back(client);
@@ -304,8 +325,7 @@ class WorkerToWorkerConnection {
     }
 };
 
-//Vector that stores every client that has been created
-vector<Client> clientsConnected;
+
 
 
 //Helper function used to find a Client object given its username
