@@ -253,12 +253,56 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     //Sets user1 as following user2
     Status Join(ServerContext* context, const Request* request, Reply* reply) override {
         
-        return Status::OK; 
+        string username = request->username();
+        string userToJoin = request->arguments(0);
+        
+        //Data being sent to the server
+        Request requestMaster;
+        requestMaster.set_username(username);
+        requestMaster.add_arguments(userToJoin);
+  
+        //Container for the data from the server
+        Reply replyMaster;
+
+        //Context for the client
+        ClientContext contextClient;
+
+        Status status = masterConnection->masterStub->JoinMaster(&contextClient, requestMaster, &replyMaster);
+        
+        if(status.ok()) {
+            string msgForward = replyMaster.msg();
+            reply->set_msg(msgForward);
+        } else {
+            cout << "SOMETHING BAD HAPPENED IN JOIN" << endl;
+        }
+        return Status::OK;
     }
 
     //Sets user1 as no longer following user2
     Status Leave(ServerContext* context, const Request* request, Reply* reply) override {
         
+        string username = request->username();
+        string userToLeave = request->arguments(0);
+        
+        //Data being sent to the server
+        Request requestMaster;
+        requestMaster.set_username(username);
+        requestMaster.add_arguments(userToLeave);
+  
+        //Container for the data from the server
+        Reply replyMaster;
+
+        //Context for the client
+        ClientContext contextClient;
+
+        Status status = masterConnection->masterStub->LeaveMaster(&contextClient, requestMaster, &replyMaster);
+        
+        if(status.ok()) {
+            string msgForward = replyMaster.msg();
+            reply->set_msg(msgForward);
+        } else {
+            cout << "SOMETHING BAD HAPPENED IN LEAVE" << endl;
+        }
         return Status::OK;
     }
 

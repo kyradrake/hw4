@@ -43,6 +43,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <vector>
 #include <memory>
 #include <string>
 #include <stdlib.h>
@@ -121,8 +122,7 @@ struct Client {
 //Vector that stores every client that has been created
 vector<Client> client_db;
 
-//Helper function used to find a Client object given its username
-int find_user(string username){
+int findUser(string username){
     int index = 0;
     for(Client c : client_db){
         if(c.username == username){
@@ -131,6 +131,16 @@ int find_user(string username){
         index++;
     }
     return -1;
+}
+
+//Helper function used to find a Client object given its username
+bool checkIfUserExists(string username){
+    for(Client c : client_db){
+        if(c.username == username){
+            return true;
+        }
+    }
+    return false;
 }
 
 class MasterHelper {
@@ -288,16 +298,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         string username = request->username();
         string address = request->arguments(0);
         
-        //check to see if username already exists
-        bool alreadyExists = false;
-        for(int i = 0; i < client_db.size(); i++){
-            if(client_db[i].username == username){
-                alreadyExists = true;
-            }
-        }
-        
         //if the username does not already exist, add it to the database
-        if(!alreadyExists){
+        if(!checkIfUserExists(username)){
             Client client;
             client.username = username;
             
@@ -312,6 +314,74 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             reply->set_msg("Login Successful!");
         } else {
             reply->set_msg("Welcome Back " + username);
+        }
+        
+        return Status::OK;
+    }
+    
+    Status JoinMaster(ServerContext* context, const Request* request, Reply* reply) override {
+        string username = request->username();
+        string usernameToJoin = request->arguments(0);
+        
+        //if both of the usernames exist, join username with usernameToJoin
+        if(checkIfUserExists(username) && checkIfUserExists(usernameToJoin)){
+            
+            int userIndex = findUser(username);
+            
+            //check to see if join has already happened
+            bool exists = false;
+            for(int i = 0; i < client_db[userIndex].clientFollowers.size(); i++){
+                if(client_db[userIndex].clientFollowers[i] == usernameToJoin){
+                    exists = true;
+                }
+            }
+            
+            //if it hasn't, join now
+            if(!exists){
+               client_db[userIndex].clientFollowers.push_back(usernameToJoin); 
+            }
+            
+            int userJoinIndex = findUser(usernameToJoin);
+            
+            //check to see if join has already happened
+            exists = false;
+            for(int i = 0; i < client_db[userJoinIndex].clientFollowing.size(); i++){
+                if(client_db[userJoinIndex].clientFollowing[i] == username){
+                    exists = true;
+                }
+            }
+            
+            //if it hasn't, join now
+            if(!exists){
+                client_db[userJoinIndex].clientFollowing.push_back(username);
+            }
+            
+            reply->set_msg("Join Successful!");
+        } else {
+            reply->set_msg("ERROR: Join Unsuccessful.");
+        }
+        
+        return Status::OK;
+    }
+    
+    Status LeaveMaster(ServerContext* context, const Request* request, Reply* reply) override {
+        string username = request->username();
+        string usernameToLeave = request->arguments(0);
+        
+        //if both of the usernames exist, join username with usernameToJoin
+        if(checkIfUserExists(username) && checkIfUserExists(usernameToLeave)){
+            
+            //check to see if leave has already happened. If it hasn't, leave now
+            int userIndex = findUser(username);
+            client_db[userIndex].clientFollowers.erase(find(client_db[userIndex].clientFollowers.begin(), client_db[userIndex].clientFollowers.end(), usernameToLeave)); 
+            
+            //check to see if leave has already happened. If it hasn't, leave now
+            int userLeaveIndex = findUser(usernameToLeave);
+            client_db[userLeaveIndex].clientFollowing.erase(find(client_db[userLeaveIndex].clientFollowing.begin(), client_db[userLeaveIndex].clientFollowing.end(), username)); 
+            
+            reply->set_msg("Leave Successful!");
+        } else {
+            reply->set_msg("ERROR: Leave Unsuccessful.");
         }
         
         return Status::OK;
