@@ -426,7 +426,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         //Read messages until the client disconnects
         while(stream->Read(&message)) {
             string username = message.username();
-            int user_index = find_user(username);
+            int user_index = findUser(username);
             c = &clientsConnected[user_index];
             
             //Write the current message to "username.txt"
