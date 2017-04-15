@@ -444,6 +444,31 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         }
         
         reply->set_msg(totalList);
+        return Status::OK;
+    }
+    
+    Status UpdateClientData(ServerContext* context, const Request* request, ClientListReply* reply) override {
+        string username = request->username();
+        
+        //set username
+        reply->set_username(username);
+        
+        int userIndex = findUser(username);
+        
+        if(userIndex != -1){
+            //set followers
+            for(int i = 0; i < client_db[userIndex].clientFollowers.size(); i++){
+                reply->add_followers(client_db[userIndex].clientFollowers[i]);
+            }
+
+            //set following
+            for(int i = 0; i < client_db[userIndex].clientFollowing.size(); i++){
+                reply->add_following(client_db[userIndex].clientFollowers[i]);
+            }
+        } else {
+            cout << "ERROR: user not found in the database in UpdateClientData"
+        }
+        return Status::OK;
     }
 };
 
