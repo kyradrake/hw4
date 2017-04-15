@@ -233,6 +233,44 @@ class WorkerToMasterConnection {
             return workers;
         }
     }
+    
+    void UpdateClientData(string username) {
+        // Data sent to master
+        Request request;
+        request.set_username(username);
+        
+        // Container for the data from the master
+        ClientListReply reply;
+        
+        // Context for the worker
+        ClientContext context;
+        
+        Status status = masterStub->UpdateClientData(&context, request, &reply);
+        
+        if(status.ok()) {
+            
+            //should we check if the user is already in the database before updating?
+            
+            Client client;
+            client.username = username;
+            
+            //add in followers
+            for(int i = 0; i < ClientListReply.followers().size(); i++){
+                ClientFollower follower = ClientListReply.followers(i);
+                client.clientFollowers.push_back(follower);
+            }
+            
+            //add in following
+            for(int i = 0; i < ClientListReply.following().size(); i++){
+                client.clientFollowing.push_back(ClientListReply.following(i));
+            }
+            
+            clientsConnected.push_back(client);
+        }
+        else {
+            cout << "SOMETHING BAD HAPPENED IN UPDATECLIENTWORKER" << endl;
+        }
+    }
 };
 
 class WorkerToWorkerConnection {

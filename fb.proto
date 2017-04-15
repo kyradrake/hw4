@@ -56,6 +56,9 @@ service MessengerMaster {
     
     // prints all of the client data in the master database
     rpc ListMaster (Request) returns (Reply) {}
+    
+    // updates the client struct on the worker that keeps track of the client
+    rpc UpdateClientData (Request) returns (ClientListReply) {}
 }
 
 // The service definition for the worker processes
@@ -87,9 +90,10 @@ service MessengerWorker {
     rpc MessageForFollower (FollowerMessage) returns (Reply) {}
 }
 
-message ListReply {
-    repeated string all_rooms = 1;
-    repeated string joined_rooms = 2;
+message ClientListReply {
+    string username = 1;
+    repeated string followers = 2;
+    repeated string following = 3;
 }
 
 message Request {
