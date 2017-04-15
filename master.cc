@@ -280,6 +280,9 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         string primaryAddress = masterInfo.listWorkers[indexPrimary]->hostname + ":" + masterInfo.listWorkers[indexPrimary]->portnumber;
         reply->set_primary(primaryAddress);
         
+        reply->set_secondary1("NONE");
+        reply->set_secondary2("NONE");
+        
         /*
                    
         string secondary1Address = masterInfo.listWorkers[indexSecondary1].hostname + ":" + masterInfo.listWorkers[indexSecondary1].portnumber;

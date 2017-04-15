@@ -228,7 +228,7 @@ class WorkerToMasterConnection {
             return workers;
         }
         else {
-            cout << "Worker - Error: " << status.error_code() << ": " << status.error_message() << endl;
+            cout << "Worker Primary Worker - Error: " << status.error_code() << ": " << status.error_message() << endl;
             
             vector<string> workers;
             workers.push_back("ERROR");
@@ -303,16 +303,31 @@ class WorkerToWorkerConnection {
         return (connectedWorkerAddress == w1.connectedWorkerAddress);
     }
     
-    void SendMessageToFollower() {
-        /*
-            TO DO
-            
-            This function should use the workerStub member variable to send a message to a follower client
-            This is getting called every time a user sends a chat
-            The chat will be sent to each of the user's followers via this function
-            
-            Don't forget to add arguments to the function... not 100% sure what they will be at this point
-        */
+    // sends the message to the specified user's worker
+    void SendMessageToFollower(string followerUsername, string msg) {
+        // Data being sent to the follower's worker
+        FollowerMessage request;
+        request.set_username(followerUsername);
+        request.set_msg(msg);
+        
+        // Container for the data from the follower's worker
+        Reply reply;
+        
+        // Context for the client
+        ClientContext context;
+        
+        Status status = workerStub->MessageForFollower(&context, request, &reply);
+        
+        if(status.ok()) {
+            return;
+        }
+        else {
+            /*
+                TO DO
+                
+                What to do if the message doesn't send?
+            */
+        }
     }
 };
 
@@ -484,7 +499,8 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         
         Message message;
         Client *c;
-        //Read messages until the client disconnects
+        
+        // Read messages until the client disconnects
         while(stream->Read(&message)) {
             string username = message.username();
             int user_index = findUser(username);
@@ -493,25 +509,35 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             // initialize client stream if it hasn't been yet
             if(c->stream == 0) {
                 c->stream = stream;
+                
+                //update the data in our client database
+                masterConnection->UpdateClientData(username);
             }
             
-            //Write the current message to "username.txt"
-            string filename = username+".txt";
-            ofstream user_file(filename,ios::app|ios::out|ios::in);
+            // open "username.txt"
+            string filename = username + ".txt";
+            ofstream userFile(filename,ios::app|ios::out|ios::in);
+            
+            // generate message to output to file and to followers
             google::protobuf::Timestamp temptime = message.timestamp();
             string time = google::protobuf::util::TimeUtil::ToString(temptime);
-            string fileinput = time+" :: "+message.username()+":"+message.msg()+"\n";
+            string fileinput = time + " :: " + message.username() + ":" + message.msg() + "\n";
             
-            //"Set Stream" is the default message from the client to initialize the stream
-            if(message.msg() != "Set Stream")
-                user_file << fileinput;
-            
+            // "Set Stream" is the default message from the client to initialize the stream
+            if(message.msg() != "Set Stream") {
+                // write message to "username.txt"
+                userFile << fileinput;
+                
+                
+                /*
+                    TO DO
+                    
+                    Notify secondary1 and secondary2 workers to output the new message to the text files on those servers as well
+                
+                */
+            }
             //If message = "Set Stream", print the first 20 chats from the people you follow
             else{
-                /*
-                if(c->stream==0)
-                    c->stream = stream;
-                    */
                 string line;
                 vector<string> newest_twenty;
                 ifstream in(username+"following.txt");
@@ -537,47 +563,54 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 continue;
             }
             
+            cout << "About to send messages to followers of user: " << username << endl;
             
             // send message to each follower
             for(ClientFollower follower : c->clientFollowers) {
-                follower.worker->SendMessageToFollower();
+                cout << "Found a follower: " << follower.username << endl;
                 /*
-                    TO DO
-                    
-                    Need to figure out what to do if the follower doesn't have the primary worker saved
-                    
-                    It's probably best to write a helper function which asks the master to return the worker for the specified client immediately before sending the message to the follower.
-                    This could be a helper function or maybe just a quick RPC call immediately before the "SendMessageToFollower()" call.
-                    
-                    Don't forget that we also need to add the messages to the "following.txt" files too!
-                    
-                    
                     QUESTION
                     Is it too taxing on the master to constantly ask for primary worker for each client? 
                     Maybe we do something special if a worker is known to have died. We can search the entire database and make updates only when a worker dies. This is more efficient, but much more difficult to implement.
                     Somethings to think about.....
                 */
-            }
-            
-            
-            /*
-            //Send the message to each follower's stream
-            vector<Client*>::const_iterator it;
-            for(it = c->client_followers.begin(); it!=c->client_followers.end(); it++){
-                Client *temp_client = *it;
-                if(temp_client->stream!=0 && temp_client->connected)
-                    temp_client->stream->Write(message);
                 
-                //For each of the current user's followers, put the message in their following.txt file
-                string temp_username = temp_client->username;
-                string temp_file = temp_username + "following.txt";
-                ofstream following_file(temp_file,ios::app|ios::out|ios::in);
-                following_file << fileinput;
-                temp_client->following_file_size++;
-                ofstream user_file(temp_username + ".txt",ios::app|ios::out|ios::in);
-                user_file << fileinput;
+                // send message to follower's chat stream
+                follower.worker->SendMessageToFollower(follower.username, fileinput);
+                
+                // put the message in their following.txt file
+                string followerUsername = follower.username;
+                
+                // open following.txt file on local server
+                string followingFile = followerUsername + "following.txt";
+                ofstream file(followingFile,ios::app|ios::out|ios::in);
+                
+                // add new message to following.txt file
+                file << fileinput;
+                
+                /*
+                    QUESTION
+                    
+                    How to deal with followingFileSize across 3 servers?
+                    
+                */
+                //temp_client->following_file_size++;
+                
+                /*
+                    NOTE: 
+                    IDK what this is doing.... Why are they outputting the message into followerfollowing.txt and follower.txt? 
+                    I don't think we need this code
+
+                    ofstream user_file(temp_username + ".txt",ios::app|ios::out|ios::in);
+                    user_file << fileinput;
+                */
+                
+                /*
+                    TO DO
+                    
+                    Notify secondary1 and secondary2 workers to add the new message to the "following.txt" files on the other two servers
+                */
             }
-            */
         }
         
         return Status::OK;
@@ -631,7 +664,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         /*
             TO DO
             
-            It would be a good idea to make sure this is the assigned "Primary Worker" for the forUsername. If it's not, then something went wrong and the message got routed to the wrong worker
+            It would be a good idea to make sure this is the assigned "Primary Worker" for the username. If it's not, then something went wrong and the message got routed to the wrong worker
         */
         
         
@@ -712,7 +745,7 @@ int main(int argc, char** argv) {
 	pthread_create(&workerThread, NULL, RunWorker, NULL);
     
     // Sleep in case worker tries to connect before master is running
-    usleep(10);
+    usleep(100);
     
     ConnectToMaster(host, port);
     
