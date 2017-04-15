@@ -238,6 +238,7 @@ class WorkerToMasterConnection {
         }
     }
     
+    // call this when we need to update clientsConnected with the database from the master
     void UpdateClientData(string username) {
         // Data sent to master
         Request request;
@@ -453,6 +454,10 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         } else {
             cout << "SOMETHING BAD HAPPENED IN LOGIN" << endl;
         }
+        
+        //update the data in our client database
+        masterConnection->UpdateClientData(username);
+        
         return Status::OK;
     }
     
