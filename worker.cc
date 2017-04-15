@@ -73,6 +73,7 @@ using hw4::ListReply;
 using hw4::Request;
 using hw4::Reply;
 using hw4::WorkerAddress;
+using hw4::FollowerMessage;
 using hw4::AssignedWorkers;
 using hw4::MessengerWorker;
 using hw4::MessengerMaster;
@@ -161,6 +162,18 @@ class WorkerToWorkerConnection {
         connectedWorkerAddress = waddress;
         workerStub = MessengerWorker::NewStub(channel);
     }
+    
+    void SendMessageToFollower() {
+        /*
+            TO DO
+            
+            This function should use the workerStub member variable to send a message to a follower client
+            This is getting called every time a user sends a chat
+            The chat will be sent to each of the user's followers via this function
+            
+            Don't forget to add arguments to the function... not 100% sure what they will be at this point
+        */
+    }
 };
 
 // struct to hold information about other clients
@@ -170,10 +183,21 @@ struct ClientFollower {
     // worker assigned to this client
     // used to send chat messages to this client
     WorkerToWorkerConnection* worker; 
-    
+     
     ClientFollower(string uname) {
         username = uname;
     }
+    
+    
+    /*
+        TO DO
+        
+        At some point the worker needs to be initialized.
+        Maybe this should be done in the constructor
+        
+        We need an RPC call to the master to do this (i.e. use the masterConnection object)...
+        Need to add more Proto stuff :/
+    */
 };
 
 
@@ -351,6 +375,27 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 stream->Write(new_msg);
             }
             
+            // send message to each follower
+            for(ClientFollower follower : c->clientFollowers) {
+                follower.worker->SendMessageToFollower();
+                /*
+                    TO DO
+                    
+                    Need to figure out what to do if the follower doesn't have the primary worker saved
+                    
+                    It's probably best to write a helper function which asks the master to return the worker for the specified client immediately before sending the message to the follower.
+                    This could be a helper function or maybe just a quick RPC call immediately before the "SendMessageToFollower()" call.
+                    
+                    Don't forget that we also need to add the messages to the "following.txt" files too!
+                    
+                    
+                    QUESTION
+                    Is it too taxing on the master to constantly ask for primary worker for each client? 
+                    Maybe we do something special if a worker is known to have died. We can search the entire database and make updates only when a worker dies. This is more efficient, but much more difficult to implement.
+                    Somethings to think about.....
+                */
+            }
+            
             
             /*
             //Send the message to each follower's stream
@@ -393,6 +438,31 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         
         //TESTING WITH ONLY 1. STILL HAVE TO WRITE THIS
         reply->set_msg("1");
+        
+        return Status::OK;
+    }
+    
+    Status MessageForFollower(ServerContext* context, const FollowerMessage* request, Reply* reply) override {
+        cout << "Received a Message for a Follower\n";
+        
+        string fromUsername = request->from_username();
+        string forUsername = request->for_username();
+        string message = request->msg();
+        
+        
+        /*
+            TO DO
+            
+            This function should find the forUsername in the client DB
+            The message should be pushed onto that client's message queue
+            
+            The fromUsername may not be needed, but is added in case
+        
+            It would be a good idea to make sure this is the assigned "Primary Worker" for the forUsername. If it's not, then something went wrong and the message got routed to the wrong worker
+        */
+        
+        
+        reply->set_msg("");
         
         return Status::OK;
     }

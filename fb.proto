@@ -76,6 +76,9 @@ service MessengerWorker {
     
     // Returns the number of clients connected to the worker
     rpc NumberClientsConnected (Request) returns (Reply) {}
+    
+    // Send message to a client's follower
+    rpc MessageForFollower (FollowerMessage) returns (Reply) {}
 }
 
 message ListReply {
@@ -122,4 +125,15 @@ message Message {
   
   //Secondary Worker 2
   string secondary2 = 6;
+}
+
+message FollowerMessage {
+    // username for who sent the message
+    string from_username = 1;
+    
+    // username for who the message is for
+    string for_username = 2;
+    
+    // message
+    string msg = 3;
 }
