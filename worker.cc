@@ -619,12 +619,11 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     Status MessageForFollower(ServerContext* context, const FollowerMessage* request, Reply* reply) override {
         cout << "Received a Message for a Follower\n";
         
-        string fromUsername = request->from_username();
-        string forUsername = request->for_username();
+        string username = request->username();
         string message = request->msg();
         
         // Find client in database message is for
-        int clientIndex = findUser(forUsername);
+        int clientIndex = findUser(username);
         Client* client = clientsConnected[clientIndex];
         
         // Add message to client's queue

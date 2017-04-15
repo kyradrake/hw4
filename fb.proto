@@ -138,12 +138,9 @@ message Message {
 }
 
 message FollowerMessage {
-    // username for who sent the message
-    string from_username = 1;
-    
     // username for who the message is for
-    string for_username = 2;
+    string username = 1;
     
     // message
-    string msg = 3;
+    string msg = 2;
 }
