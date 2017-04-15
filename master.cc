@@ -97,6 +97,10 @@ class WorkerProcess {
         portnumber = p;
         workerStub = MessengerWorker::NewStub(c);
     }
+    
+    string getWorkerAddress() {
+        return hostname + ":" + portnumber;
+    }
 };
 
 //Client struct that holds a user's username, followers, and users they follow
@@ -290,6 +294,24 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         }
         
         */
+        
+        return Status::OK;
+    }
+    
+    // Get the address for the specified client's primary worker
+    Status GetClientsPrimaryWorker(ServerContext* context, const Request* request, Reply* reply) override {
+        string username = request->username();
+        int clientIndex = findUser(username);
+        
+        // check if client was found in the database
+        if (clientIndex == -1) {
+            reply->set_msg("Username not found");
+            return Status::CANCELLED;
+        }
+        
+        string workerAddress = client_db[clientIndex].primaryWorker->getWorkerAddress();
+        
+        reply->set_msg(workerAddress);
         
         return Status::OK;
     }
