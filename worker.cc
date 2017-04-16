@@ -151,7 +151,7 @@ class WorkerToMasterConnection {
     
     // notifies master that a new worker process has begun
     // sends the workers host and port to master
-    void WorkerConnected(string workerHost, string workerPort) {
+    Status WorkerConnected(string workerHost, string workerPort) {
         // Data sent to master 
         WorkerAddress request;
         request.set_host(workerHost);
@@ -167,9 +167,10 @@ class WorkerToMasterConnection {
         
         if(status.ok()) {
             cout << "Worker - Worker Connected to Master Process" << endl;
+            return Status::OK;
         }
         else {
-            cout << "Worker - Error: " << status.error_code() << ": " << status.error_message() << endl;
+            return Status::CANCELLED;
         }
     }
     
@@ -711,7 +712,14 @@ void ConnectToMaster(string workerHost, string workerPort) {
     shared_ptr<Channel> channel = grpc::CreateChannel(masterAddress, grpc::InsecureChannelCredentials());
     masterConnection = new WorkerToMasterConnection(channel);
     
-    masterConnection->WorkerConnected(workerHost, workerPort);
+    //keep on re-running until we connect to the master
+    bool connected = false;
+    while(!connected){
+        Status status = masterConnection->WorkerConnected(workerHost, workerPort);
+        if(status.ok()){
+            connected = true;
+        }
+    }
 }
 
 int main(int argc, char** argv) {
@@ -745,9 +753,6 @@ int main(int argc, char** argv) {
     
     pthread_t workerThread;
 	pthread_create(&workerThread, NULL, RunWorker, NULL);
-    
-    // Sleep in case worker tries to connect before master is running
-    usleep(100);
     
     ConnectToMaster(host, port);
     
