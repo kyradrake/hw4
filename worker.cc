@@ -197,7 +197,7 @@ class WorkerToMasterConnection {
         }
     }
     
-    vector<string> FindPrimaryWorker() {
+    vector<string> FindPrimaryWorker(string clientUsername) {
         if(masterStub == NULL) {
             vector<string> error;
             error.push_back("NULL ERROR");
@@ -206,7 +206,7 @@ class WorkerToMasterConnection {
         
         // Data being sent to the server
         Request request;
-        request.set_username("Worker");
+        request.set_username(clientUsername);
         
         // Container for the data from the server
         AssignedWorkers reply;
@@ -482,7 +482,9 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     Status Connect(ServerContext* context, const Request* request, AssignedWorkers* reply) override {
         cout << "Client Connecting\n";
         
-        vector<string> assignedWorkers = masterConnection->FindPrimaryWorker();
+        string clientUsername = request->username();
+        
+        vector<string> assignedWorkers = masterConnection->FindPrimaryWorker(clientUsername);
         
         if(assignedWorkers.size() != 3) {
             return Status::CANCELLED;

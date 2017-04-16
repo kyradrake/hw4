@@ -115,8 +115,10 @@ struct Client {
     // usernames for the clients who follow the user
     vector<string> clientFollowing;
     
-    // pointer to primary worker assigned to client
+    // pointer to workers assigned to client
     WorkerProcess* primaryWorker;
+    WorkerProcess* secondary1Worker;
+    WorkerProcess* secondary2Worker;
     
     bool operator==(const Client& c1) const{
         return (username == c1.username);
@@ -150,6 +152,7 @@ bool checkIfUserExists(string username){
 class MasterHelper {
     public:
     string masterAddress;
+    
     //how do I create a new worker stub to push into this thingy
     vector<WorkerProcess*> listWorkers;
     
@@ -159,6 +162,13 @@ class MasterHelper {
     
     MasterHelper(string a){
         masterAddress = a;
+    }
+    
+    WorkerProcess* findWorker(string address) {
+        for(WorkerProcess* w : listWorkers) {
+            //if (w->)
+        }
+        return NULL;
     }
 };
 
@@ -196,6 +206,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         */
         
         cout << "Master - Find primary and secondary workers for new client\n";
+        
+        string clientUsername = request->username();
        
         int indexPrimary = -1;
         int indexSecondary1 = -1;
@@ -282,6 +294,13 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         reply->set_secondary1("NONE");
         reply->set_secondary2("NONE");
+        
+        
+        /* 
+            TO DO
+            
+            Use clientUsername to find the client in the client_db
+            Add primary, secondary1, and secondary2 workers to the client object
         
         /*
                    
