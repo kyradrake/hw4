@@ -303,6 +303,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
     
     // Get the address for the specified client's primary worker
     Status GetClientsPrimaryWorker(ServerContext* context, const Request* request, Reply* reply) override {
+        cout << "Master - In GetClientsPrimaryWorker\n";
         string username = request->username();
         int clientIndex = findUser(username);
         

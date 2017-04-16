@@ -192,7 +192,7 @@ class WorkerToMasterConnection {
             return clientsPrimaryWorker;
         }
         else {
-            cout << "ERROR - GetClientsPrimaryWorker Failed";
+            cout << "ERROR - GetClientsPrimaryWorker Failed\n";
             return "";
         }
     }
