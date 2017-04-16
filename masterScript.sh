@@ -9,7 +9,8 @@
 export p1=$!
 
 ./worker -h lenss-comp1.cse.tamu.edu -p 4633 -m lenss-comp1.cse.tamu.edu -a 4632 &
-#export p2=$!
+export p2=$!
+
 
 #./worker 4634
 
@@ -19,7 +20,8 @@ export p1=$!
 
 #echo "Press enter to kill the following processes individually:"
 echo $p1
-#echo $p2
+echo $p2
+
 #echo $p3
 #read input
 #kill $p1
