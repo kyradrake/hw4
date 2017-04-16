@@ -639,7 +639,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     }
     
     Status NumberClientsConnected(ServerContext* context, const Request* request, Reply* reply) override {
-        cout << "Worker - Tell master how many clients are connected \n";
         
         //TESTING WITH ONLY 1. STILL HAVE TO WRITE THIS
         reply->set_msg("1");

@@ -124,9 +124,6 @@ struct Client {
     vector<string> clientFollowing;
     
     // pointer to workers assigned to client
-    /*WorkerProcess* primaryWorker;
-    WorkerProcess* secondary1Worker;
-    WorkerProcess* secondary2Worker;*/
     string primaryWorker;
     string secondary1Worker;
     string secondary2Worker;
@@ -138,10 +135,6 @@ struct Client {
         primaryWorker = "";
         secondary1Worker = "";
         secondary2Worker = "";
-        /*
-        primaryWorker = NULL;
-        secondary1Worker = NULL;
-        secondary2Worker = NULL;*/
     }
     
     Client(string uname) {
@@ -151,10 +144,6 @@ struct Client {
         primaryWorker = "";
         secondary1Worker = "";
         secondary2Worker = "";
-        /*
-        primaryWorker = NULL;
-        secondary1Worker = NULL;
-        secondary2Worker = NULL; */
     }
     
     bool operator==(const Client& c1) const{
