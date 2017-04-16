@@ -224,7 +224,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
        bool alreadyExists = false;
        for(int i = 0; i < masterInfo.listWorkers.size(); i++) {
            if(masterInfo.listWorkers[i]->getWorkerAddress() == (hostname + ":" + portnumber)){
-               masterInfo.listWorkers[i]->workerStub = workerChannel;
+               masterInfo.listWorkers[i] = worker;
                alreadyExists = true;
            }
        }
