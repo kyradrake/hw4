@@ -106,16 +106,15 @@ string masterAddress = "";
 struct ClientFollower {
     string username;
     
-    // worker assigned to this client
-    // used to send chat messages to this client
-    WorkerToWorkerConnection* worker; 
-     
-    ClientFollower(string uname, WorkerToWorkerConnection* w) {
+    // address of worker assigned to this client
+    string worker; 
+    
+    ClientFollower(string uname, string w) {
         username = uname;
         worker = w;
     }
     
-    void updateWorker(WorkerToWorkerConnection* w) {
+    void updateWorker(string w) {
         worker = w;
     }
 };
@@ -139,6 +138,17 @@ struct Client {
         return (username == c1.username);
     }
 };
+
+//Helper function used to find a Client object given its username
+Client* findUser(string username){
+    int index = 0;
+    for(Client* c : clientsConnected){
+        if(c->username == username){
+            return c;
+        }
+    }
+    return NULL;
+}
 
 class WorkerToMasterConnection {
     public:
@@ -242,6 +252,9 @@ class WorkerToMasterConnection {
     
     // call this when we need to update clientsConnected with the database from the master
     void UpdateClientData(string username) {
+        
+        cout << "Worker - Updating Client Data\n";
+        
         // Data sent to master
         Request request;
         request.set_username(username);
@@ -255,27 +268,27 @@ class WorkerToMasterConnection {
         Status status = masterStub->UpdateClientData(&context, request, &reply);
         
         if(status.ok()) {
+            // find client in the local database
+            Client* client = findUser(username);
             
-            //should we check if the user is already in the database before updating?
+            // empty followers/following lists
+            client->clientFollowers = vector<ClientFollower>();
+            client->clientFollowing = vector<string>();
             
-            Client* client = new Client();
-            client->username = username;
-            
-            //add in followers
+            // add in followers
             for(int i = 0; i < reply.followers().size(); i++){
                 // get follower's username 
                 string fUsername = reply.followers(i);
                 
                 // get follower's primary worker
                 string fWorkerAddress = masterConnection->GetClientsPrimaryWorker(fUsername);
-                WorkerToWorkerConnection* fWorker = findWorker(fWorkerAddress);
                 
-                ClientFollower follower(fUsername, fWorker);
+                ClientFollower follower(fUsername, fWorkerAddress);
                 
                 client->clientFollowers.push_back(follower);
             }
             
-            //add in following
+            // add in following
             for(int i = 0; i < reply.following().size(); i++){
                 client->clientFollowing.push_back(reply.following(i));
             }
@@ -335,19 +348,6 @@ class WorkerToWorkerConnection {
 };
 
 
-
-
-//Helper function used to find a Client object given its username
-int findUser(string username){
-    int index = 0;
-    for(Client* c : clientsConnected){
-        if(c->username == username){
-            return index;
-        }
-        index++;
-    }
-    return -1;
-}
 
 // Searches for a connection to a worker with the specified address
 // If it cannot be found in the database, establish a connection to the worker
@@ -512,8 +512,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         // Read messages until the client disconnects
         while(stream->Read(&message)) {
             string username = message.username();
-            int user_index = findUser(username);
-            c = clientsConnected[user_index];
+            c = findUser(username);
             
             // initialize client stream if it hasn't been yet
             if(c->stream == 0) {
@@ -585,7 +584,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 */
                 
                 // send message to follower's chat stream
-                follower.worker->SendMessageToFollower(follower.username, fileinput);
+                findWorker(follower.worker)->SendMessageToFollower(follower.username, fileinput);
                 
                 // put the message in their following.txt file
                 string followerUsername = follower.username;
@@ -653,8 +652,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         string message = request->msg();
         
         // Find client in database message is for
-        int clientIndex = findUser(username);
-        Client* client = clientsConnected[clientIndex];
+        Client* client = findUser(username);
         
         // Write message to client's stream
         if(client->stream != 0) {
