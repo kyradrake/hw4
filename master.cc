@@ -228,6 +228,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
                 cout << clientReply.msg() << endl;
                 if(stoi(clientReply.msg()) < currentMin){
                     indexPrimary = i;
+                    currentMin = stoi(clientReply.msg());
                 }
             }
             else {
@@ -254,6 +255,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
                 cout << clientReply.msg() << endl;
                 if(stoi(clientReply.msg()) < currentMin && masterInfo.listWorkers[i].hostname != masterInfo.listWorkers[indexPrimary].hostname){
                     indexSecondary1 = i;
+                    currentMin = stoi(clientReply.msg());
                 }
             }
             else {
@@ -278,6 +280,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
                 cout << clientReply.msg() << endl;
                 if(stoi(clientReply.msg()) < currentMin && (masterInfo.listWorkers[i].hostname != masterInfo.listWorkers[indexPrimary].hostname || masterInfo.listWorkers[i].hostname != masterInfo.listWorkers[indexSecondary1].hostname)){
                     indexSecondary2 = i;
+                    currentMin = stoi(clientReply.msg());
                 }
             }
             else {
@@ -288,13 +291,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         }
         
         */
-                   
-        string primaryAddress = masterInfo.listWorkers[indexPrimary]->hostname + ":" + masterInfo.listWorkers[indexPrimary]->portnumber;
-        reply->set_primary(primaryAddress);
-        
-        reply->set_secondary1("NONE");
-        reply->set_secondary2("NONE");
-        
         
         /* 
             TO DO
@@ -302,20 +298,33 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Use clientUsername to find the client in the client_db
             Add primary, secondary1, and secondary2 workers to the client object
         
-        /*
-                   
-        string secondary1Address = masterInfo.listWorkers[indexSecondary1].hostname + ":" + masterInfo.listWorkers[indexSecondary1].portnumber;
-        reply->set_secondary1(secondary1Address);
-                   
-        if(indexSecondary2 != -1){
-            string secondary2Address = masterInfo.listWorkers[indexSecondary2].hostname + ":" + masterInfo.listWorkers[indexSecondary2].portnumber;
-            reply->set_secondary2(secondary2Address);
+        */
+        
+        int userIndex = findUser(clientUsername);
+        
+        if(indexPrimary != -1){
+            string primaryAddress = masterInfo.listWorkers[indexPrimary]->hostname + ":" + masterInfo.listWorkers[indexPrimary]->portnumber;
+            reply->set_primary(primaryAddress);
+            client_db[userIndex].primaryWorker = masterInfo.listWorkers[indexPrimary];
         } else {
-            //INVALID
-            reply->set_secondary2("NONE");
+            reply->set_primary("NONE");
         }
         
-        */
+        if(indexSecondary1 != -1){
+            string secondary1Address = masterInfo.listWorkers[indexSecondary1]->hostname + ":" + masterInfo.listWorkers[indexSecondary1]->portnumber;
+            reply->set_secondary1(secondary1Address);
+            client_db[userIndex].secondary1Worker = masterInfo.listWorkers[indexSecondary1];
+        } else {
+            reply->set_secondary1("NONE");
+        }
+        
+        if(indexSecondary2 != -1){
+            string secondary2Address = masterInfo.listWorkers[indexSecondary2]->hostname + ":" + masterInfo.listWorkers[indexSecondary2]->portnumber;
+            reply->set_secondary2(secondary2Address);
+            client_db[userIndex].secondary2Worker = masterInfo.listWorkers[indexSecondary2];
+        } else {
+            reply->set_secondary2("NONE");
+        }
         
         return Status::OK;
     }
