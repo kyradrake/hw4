@@ -223,8 +223,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
        //check to see if worker already exists
        bool alreadyExists = false;
        for(int i = 0; i < masterInfo.listWorkers.size(); i++) {
-           if(masterInfo.listWorkers[i].getWorkerAddress() == (hostname + ":" + portnumber)){
-               masterInfo.listWorkers[i].workerStub = workerChannel;
+           if(masterInfo.listWorkers[i]->getWorkerAddress() == (hostname + ":" + portnumber)){
+               masterInfo.listWorkers[i]->workerStub = workerChannel;
                alreadyExists = true;
            }
        }
