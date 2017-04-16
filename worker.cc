@@ -269,15 +269,14 @@ class WorkerToMasterConnection {
         
         if(status.ok()) {
             // find client in the local database
-            Client* client = findUser(username);
+            cout << "----------------------------" << endl;
+            cout << "before client" << endl;
+            Client* client;
             
-            // empty followers/following lists
-            client->clientFollowers = vector<ClientFollower>();
-            client->clientFollowing = vector<string>();
-            
+            cout << "adding in followers: " << reply.followers().size() << endl;
             // add in followers
             for(int i = 0; i < reply.followers().size(); i++){
-                // get follower's username 
+                // get follower's username
                 string fUsername = reply.followers(i);
                 
                 // get follower's primary worker
@@ -288,12 +287,25 @@ class WorkerToMasterConnection {
                 client->clientFollowers.push_back(follower);
             }
             
+            cout << "adding in following: " << reply.following().size();
             // add in following
             for(int i = 0; i < reply.following().size(); i++){
                 client->clientFollowing.push_back(reply.following(i));
             }
             
-            clientsConnected.push_back(client);
+            cout << "pushing new client into the clients connected" << endl;
+            
+            //check to see if updating, or creating new data
+            bool alreadyExists = false;
+            for(int i = 0; i < clientsConnected.size(); i++){
+                if(clientsConnected[i]->username == username) {
+                    clientsConnected[i] = client;
+                    alreadyExists = true;
+                }
+            }
+            if(!alreadyExists){
+                clientsConnected.push_back(client);
+            }
         }
         else {
             cout << "SOMETHING BAD HAPPENED IN UPDATECLIENTWORKER" << endl;
