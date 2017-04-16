@@ -120,18 +120,36 @@ struct Client {
     WorkerProcess* secondary1Worker;
     WorkerProcess* secondary2Worker;
     
+    Client() {
+        username = "";
+        clientFollowers = vector<string>();
+        clientFollowing = vector<string>();
+        primaryWorker = NULL;
+        secondary1Worker = NULL;
+        secondary2Worker = NULL;
+    }
+    
+    Client(string uname) {
+        username = uname;
+        clientFollowers = vector<string>();
+        clientFollowing = vector<string>();
+        primaryWorker = NULL;
+        secondary1Worker = NULL;
+        secondary2Worker = NULL;
+    }
+    
     bool operator==(const Client& c1) const{
         return (username == c1.username);
     }
 };
 
 //Vector that stores every client that has been created
-vector<Client> client_db;
+vector<Client*> clientDB;
 
 int findUser(string username){
     int index = 0;
-    for(Client c : client_db){
-        if(c.username == username){
+    for(Client* c : clientDB){
+        if(c->username == username){
             return index;
         }
         index++;
@@ -141,8 +159,8 @@ int findUser(string username){
 
 //Helper function used to find a Client object given its username
 bool checkIfUserExists(string username){
-    for(Client c : client_db){
-        if(c.username == username){
+    for(Client* c : clientDB){
+        if(c->username == username){
             return true;
         }
     }
@@ -158,17 +176,12 @@ class MasterHelper {
     
     MasterHelper(){
         masterAddress = "";
+        listWorkers = vector<WorkerProcess*>();
     }
     
     MasterHelper(string a){
         masterAddress = a;
-    }
-    
-    WorkerProcess* findWorker(string address) {
-        for(WorkerProcess* w : listWorkers) {
-            //if (w->)
-        }
-        return NULL;
+        listWorkers = vector<WorkerProcess*>();
     }
 };
 
@@ -215,6 +228,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         int currentMin = 999999;
         
+        cout << "Master, listWorkers size: " << masterInfo.listWorkers.size() << endl;
+        
         //initial loop to find the index for the primary worker
         for(int i = 0; i < masterInfo.listWorkers.size(); i++){
             
@@ -237,6 +252,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
                 cout << "Master - RPC failed\n";
             }
         }
+        
+        cout << "Master- FindPrimWorker here 1\n\n";
         
         /* AS WE ONLY HAVE A SINGLE SERVER WORKING RIGHT NOW, THIS CODE IS NOT NECESSARY
         
@@ -278,7 +295,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
       
             if(status.ok()) {
                 cout << clientReply.msg() << endl;
-                if(stoi(clientReply.msg()) < currentMin && (masterInfo.listWorkers[i].hostname != masterInfo.listWorkers[indexPrimary].hostname || masterInfo.listWorkers[i].hostname != masterInfo.listWorkers[indexSecondary1].hostname)){
+                if(stoi(clientReply.msg()) < currentMin && (masterInfo.listWorkers[i].hostname != masterInfo.listWorkers[indexPrimary].hostname && masterInfo.listWorkers[i].hostname != masterInfo.listWorkers[indexSecondary1].hostname)){
                     indexSecondary2 = i;
                     currentMin = stoi(clientReply.msg());
                 }
@@ -295,38 +312,48 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         /* 
             TO DO
             
-            Use clientUsername to find the client in the client_db
+            Use clientUsername to find the client in the client DB
             Add primary, secondary1, and secondary2 workers to the client object
         
         */
         
         int userIndex = findUser(clientUsername);
         
+        cout << "Master- FindPrimWorker here 2\n\n";
+        
         if(indexPrimary != -1){
+            cout << "Master- FindPrimWorker here 2  A\n\n";
             string primaryAddress = masterInfo.listWorkers[indexPrimary]->getWorkerAddress();
+            cout << "Master- FindPrimWorker here 2  B\n\n";
             reply->set_primary(primaryAddress);
-            client_db[userIndex].primaryWorker = masterInfo.listWorkers[indexPrimary];
+            clientDB[userIndex]->primaryWorker = masterInfo.listWorkers[indexPrimary];
+            cout << "Master- FindPrimWorker here 2  C\n\n";
         } else {
             reply->set_primary("NONE");
-            client_db[userIndex].primaryWorker = NULL;
+            cout << "Master- FindPrimWorker here 2  D\n\n";
+            clientDB[userIndex]->primaryWorker = NULL;
         }
+        
+        cout << "Master- FindPrimWorker here 3\n\n";
         
         if(indexSecondary1 != -1){
             string secondary1Address = masterInfo.listWorkers[indexSecondary1]->getWorkerAddress();
             reply->set_secondary1(secondary1Address);
-            client_db[userIndex].secondary1Worker = masterInfo.listWorkers[indexSecondary1];
+            clientDB[userIndex]->secondary1Worker = masterInfo.listWorkers[indexSecondary1];
         } else {
             reply->set_secondary1("NONE");
-            client_db[userIndex].secondary1Worker = NULL;
+            clientDB[userIndex]->secondary1Worker = NULL;
         }
+        
+        cout << "Master- FindPrimWorker here 4\n\n";
         
         if(indexSecondary2 != -1){
             string secondary2Address = masterInfo.listWorkers[indexSecondary2]->getWorkerAddress();
             reply->set_secondary2(secondary2Address);
-            client_db[userIndex].secondary2Worker = masterInfo.listWorkers[indexSecondary2];
+            clientDB[userIndex]->secondary2Worker = masterInfo.listWorkers[indexSecondary2];
         } else {
             reply->set_secondary2("NONE");
-            client_db[userIndex].secondary2Worker = NULL;
+            clientDB[userIndex]->secondary2Worker = NULL;
         }
         
         return Status::OK;
@@ -344,7 +371,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             return Status::CANCELLED;
         }
         
-        string workerAddress = client_db[clientIndex].primaryWorker->getWorkerAddress();
+        string workerAddress = clientDB[clientIndex]->primaryWorker->getWorkerAddress();
         
         reply->set_msg(workerAddress);
         
@@ -357,17 +384,16 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         //if the username does not already exist, add it to the database
         if(!checkIfUserExists(username)){
-            Client client;
-            client.username = username;
+            Client* client = new Client(username);
             
             //find existing WorkerProcess to align with
             for(int i = 0; i < masterInfo.listWorkers.size(); i++){
                 if(masterInfo.listWorkers[i]->hostname == address){
-                    client.primaryWorker = masterInfo.listWorkers[i];
+                    client->primaryWorker = masterInfo.listWorkers[i];
                 }
             }
             
-            client_db.push_back(client);
+            clientDB.push_back(client);
             reply->set_msg("Login Successful!");
         } else {
             reply->set_msg("Welcome Back " + username);
@@ -387,30 +413,30 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             
             //check to see if join has already happened
             bool exists = false;
-            for(int i = 0; i < client_db[userIndex].clientFollowers.size(); i++){
-                if(client_db[userIndex].clientFollowers[i] == usernameToJoin){
+            for(int i = 0; i < clientDB[userIndex]->clientFollowers.size(); i++){
+                if(clientDB[userIndex]->clientFollowers[i] == usernameToJoin){
                     exists = true;
                 }
             }
             
             //if it hasn't, join now
             if(!exists){
-               client_db[userIndex].clientFollowers.push_back(usernameToJoin); 
+               clientDB[userIndex]->clientFollowers.push_back(usernameToJoin); 
             }
             
             int userJoinIndex = findUser(usernameToJoin);
             
             //check to see if join has already happened
             exists = false;
-            for(int i = 0; i < client_db[userJoinIndex].clientFollowing.size(); i++){
-                if(client_db[userJoinIndex].clientFollowing[i] == username){
+            for(int i = 0; i < clientDB[userJoinIndex]->clientFollowing.size(); i++){
+                if(clientDB[userJoinIndex]->clientFollowing[i] == username){
                     exists = true;
                 }
             }
             
             //if it hasn't, join now
             if(!exists){
-                client_db[userJoinIndex].clientFollowing.push_back(username);
+                clientDB[userJoinIndex]->clientFollowing.push_back(username);
             }
             
             reply->set_msg("Join Successful!");
@@ -430,11 +456,11 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             
             //check to see if leave has already happened. If it hasn't, leave now
             int userIndex = findUser(username);
-            client_db[userIndex].clientFollowers.erase(find(client_db[userIndex].clientFollowers.begin(), client_db[userIndex].clientFollowers.end(), usernameToLeave)); 
+            clientDB[userIndex]->clientFollowers.erase(find(clientDB[userIndex]->clientFollowers.begin(), clientDB[userIndex]->clientFollowers.end(), usernameToLeave)); 
             
             //check to see if leave has already happened. If it hasn't, leave now
             int userLeaveIndex = findUser(usernameToLeave);
-            client_db[userLeaveIndex].clientFollowing.erase(find(client_db[userLeaveIndex].clientFollowing.begin(), client_db[userLeaveIndex].clientFollowing.end(), username)); 
+            clientDB[userLeaveIndex]->clientFollowing.erase(find(clientDB[userLeaveIndex]->clientFollowing.begin(), clientDB[userLeaveIndex]->clientFollowing.end(), username)); 
             
             reply->set_msg("Leave Successful!");
         } else {
@@ -450,16 +476,16 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         string totalList = "";
 
         // iterate through all of the users
-        for (int i = 0; i < client_db.size(); i++) {
+        for (int i = 0; i < clientDB.size(); i++) {
 
             // our name
-            totalList += "User: " + client_db[i].username + "\n";
+            totalList += "User: " + clientDB[i]->username + "\n";
             
             // people who we follow
             totalList += "Following: [";
-            for (int j = 0; j < client_db[i].clientFollowing.size(); j++) {
-                totalList += client_db[i].clientFollowing[j];
-                if (j != client_db[i].clientFollowing.size() - 1) {
+            for (int j = 0; j < clientDB[i]->clientFollowing.size(); j++) {
+                totalList += clientDB[i]->clientFollowing[j];
+                if (j != clientDB[i]->clientFollowing.size() - 1) {
                     totalList += ", ";
                 }
             }
@@ -467,9 +493,9 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             
             // people who follow us
             totalList += "Followers: [";
-            for (int j = 0; j < client_db[i].clientFollowers.size(); j++) {
-                totalList += client_db[i].clientFollowers[j];
-                if (j != client_db[i].clientFollowers.size() - 1) {
+            for (int j = 0; j < clientDB[i]->clientFollowers.size(); j++) {
+                totalList += clientDB[i]->clientFollowers[j];
+                if (j != clientDB[i]->clientFollowers.size() - 1) {
                     totalList += ", ";
                 }
             }
@@ -492,13 +518,13 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         if(userIndex != -1){
             //set followers
-            for(int i = 0; i < client_db[userIndex].clientFollowers.size(); i++){
-                reply->add_followers(client_db[userIndex].clientFollowers[i]);
+            for(int i = 0; i < clientDB[userIndex]->clientFollowers.size(); i++){
+                reply->add_followers(clientDB[userIndex]->clientFollowers[i]);
             }
 
             //set following
-            for(int i = 0; i < client_db[userIndex].clientFollowing.size(); i++){
-                reply->add_following(client_db[userIndex].clientFollowing[i]);
+            for(int i = 0; i < clientDB[userIndex]->clientFollowing.size(); i++){
+                reply->add_following(clientDB[userIndex]->clientFollowing[i]);
             }
         } else {
             cout << "ERROR: user not found in the database in UpdateClientData";
@@ -613,8 +639,8 @@ int main(int argc, char** argv) {
     
     cout << "Master - Thread started\n";
     
-    pthread_t heartbeatThread;
-	pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
+    //pthread_t heartbeatThread;
+	//pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
     
     cout << "Master - Heartbeat Thread started\n";
     
