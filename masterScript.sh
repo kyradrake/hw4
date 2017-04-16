@@ -5,10 +5,10 @@
 #./fbsd -p 4632 &     #-m true 
 #export p1=$!
 
-./master -h lenss-comp1.cse.tamu.edu -p 4632 &
+./master -h lenss-comp1.cse.tamu.edu -p 4732 &
 export p1=$!
 
-./worker -h lenss-comp1.cse.tamu.edu -p 4633 -m lenss-comp1.cse.tamu.edu -a 4632 &
+./worker -h lenss-comp1.cse.tamu.edu -p 4733 -m lenss-comp1.cse.tamu.edu -a 4732 &
 export p2=$!
 
 

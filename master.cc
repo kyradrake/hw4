@@ -92,6 +92,14 @@ class WorkerProcess {
         workerStub = NULL;
     }
     
+    WorkerProcess(string h, string p) {
+        hostname = h;
+        portnumber = p;
+        
+        shared_ptr<Channel> channel = grpc::CreateChannel(hostname + ":" + portnumber, grpc::InsecureChannelCredentials());
+        workerStub = MessengerWorker::NewStub(channel);
+    }
+    
     WorkerProcess(string h, string p, shared_ptr<Channel> c){
         hostname = h;
         portnumber = p;
@@ -116,26 +124,37 @@ struct Client {
     vector<string> clientFollowing;
     
     // pointer to workers assigned to client
-    WorkerProcess* primaryWorker;
+    /*WorkerProcess* primaryWorker;
     WorkerProcess* secondary1Worker;
-    WorkerProcess* secondary2Worker;
+    WorkerProcess* secondary2Worker;*/
+    string primaryWorker;
+    string secondary1Worker;
+    string secondary2Worker;
     
     Client() {
         username = "";
         clientFollowers = vector<string>();
         clientFollowing = vector<string>();
+        primaryWorker = "";
+        secondary1Worker = "";
+        secondary2Worker = "";
+        /*
         primaryWorker = NULL;
         secondary1Worker = NULL;
-        secondary2Worker = NULL;
+        secondary2Worker = NULL;*/
     }
     
     Client(string uname) {
         username = uname;
         clientFollowers = vector<string>();
         clientFollowing = vector<string>();
+        primaryWorker = "";
+        secondary1Worker = "";
+        secondary2Worker = "";
+        /*
         primaryWorker = NULL;
         secondary1Worker = NULL;
-        secondary2Worker = NULL;
+        secondary2Worker = NULL; */
     }
     
     bool operator==(const Client& c1) const{
@@ -183,9 +202,18 @@ class MasterHelper {
         masterAddress = a;
         listWorkers = vector<WorkerProcess*>();
     }
+    
+    WorkerProcess* getWorker(string address) {
+        for(WorkerProcess* w : listWorkers) {
+            if(w->getWorkerAddress() == address) {
+                return w;
+            }
+        }
+        return NULL;
+    }
 };
 
-MasterHelper masterInfo;
+MasterHelper masterInfo = MasterHelper();
 
 //hostname and portnumber for the master
 string master_hostname;
@@ -206,6 +234,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
        //push worker object onto our list of workers
        masterInfo.listWorkers.push_back(worker);
        
+       cout << "Master, list workers size in WorkerConnected: " << masterInfo.listWorkers.size() << "\n";
+       
        return Status::OK;
    }
 
@@ -218,7 +248,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             reply->set_secondary2(ADDRESS OF SECONDARY WORKER 2)
         */
         
-        cout << "Master - Find primary and secondary workers for new client\n";
+        //cout << "Master - Find primary and secondary workers for new client\n";
         
         string clientUsername = request->username();
        
@@ -226,9 +256,15 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         int indexSecondary1 = -1;
         int indexSecondary2 = -1;
         
+        /*
+        WorkerProcess* primary = NULL;
+        WorkerProcess* secondary1 = NULL;
+        WorkerProcess* secondary2 = NULL;
+        */
+        
         int currentMin = 999999;
         
-        cout << "Master, listWorkers size: " << masterInfo.listWorkers.size() << endl;
+        cout << "Master, FindPrimayWorker, listWorkers size: " << masterInfo.listWorkers.size() << endl;
         
         //initial loop to find the index for the primary worker
         for(int i = 0; i < masterInfo.listWorkers.size(); i++){
@@ -242,6 +278,9 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             if(status.ok()) {
                 cout << clientReply.msg() << endl;
                 if(stoi(clientReply.msg()) < currentMin){
+                    cout << "WorkerProcess address: " << masterInfo.listWorkers[i] << endl;
+                    //primary = masterInfo.listWorkers[i];
+                    //cout << "Primary Address: " << primary << endl;
                     indexPrimary = i;
                     currentMin = stoi(clientReply.msg());
                 }
@@ -253,7 +292,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             }
         }
         
-        cout << "Master- FindPrimWorker here 1\n\n";
+        //cout << "Master- FindPrimWorker here 1\n\n";
         
         /* AS WE ONLY HAVE A SINGLE SERVER WORKING RIGHT NOW, THIS CODE IS NOT NECESSARY
         
@@ -318,42 +357,65 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         */
         
         int userIndex = findUser(clientUsername);
+        //cout << "Master- Username: |" << clientUsername << "|\n";
         
-        cout << "Master- FindPrimWorker here 2\n\n";
+        //cout << "Master- FindPrimWorker here 2, userIndex = " << userIndex << "\n\n";
         
         if(indexPrimary != -1){
-            cout << "Master- FindPrimWorker here 2  A\n\n";
+            //cout << "Master- FindPrimWorker here 2  A\n\n";
+            
             string primaryAddress = masterInfo.listWorkers[indexPrimary]->getWorkerAddress();
-            cout << "Master- FindPrimWorker here 2  B\n\n";
+            
+            //cout << "Master- FindPrimWorker here 2  B, primary address = " << primaryAddress << "\n\n";
+            
             reply->set_primary(primaryAddress);
-            clientDB[userIndex]->primaryWorker = masterInfo.listWorkers[indexPrimary];
-            cout << "Master- FindPrimWorker here 2  C\n\n";
+            
+            //cout << "Master- FindPrimWorker here 2  C\n\n";
+            
+            if(userIndex != -1) {
+                clientDB[userIndex]->primaryWorker = primaryAddress;
+            }
+            
+            //cout << "Master- FindPrimWorker here 2  D\n\n";
         } else {
             reply->set_primary("NONE");
-            cout << "Master- FindPrimWorker here 2  D\n\n";
-            clientDB[userIndex]->primaryWorker = NULL;
+            //cout << "Master- FindPrimWorker here 2  E\n\n";
+            
+            if(userIndex != -1) {
+                clientDB[userIndex]->primaryWorker = "";
+            }
+            
         }
         
-        cout << "Master- FindPrimWorker here 3\n\n";
+        //cout << "Master- FindPrimWorker here 3\n\n";
         
         if(indexSecondary1 != -1){
             string secondary1Address = masterInfo.listWorkers[indexSecondary1]->getWorkerAddress();
             reply->set_secondary1(secondary1Address);
-            clientDB[userIndex]->secondary1Worker = masterInfo.listWorkers[indexSecondary1];
+            
+            if(userIndex != -1) {
+                clientDB[userIndex]->secondary1Worker = secondary1Address;
+            }
         } else {
             reply->set_secondary1("NONE");
-            clientDB[userIndex]->secondary1Worker = NULL;
+            if(userIndex != -1) {
+                clientDB[userIndex]->secondary1Worker = "";
+            }
         }
         
-        cout << "Master- FindPrimWorker here 4\n\n";
+        //cout << "Master- FindPrimWorker here 4\n\n";
         
         if(indexSecondary2 != -1){
             string secondary2Address = masterInfo.listWorkers[indexSecondary2]->getWorkerAddress();
             reply->set_secondary2(secondary2Address);
-            clientDB[userIndex]->secondary2Worker = masterInfo.listWorkers[indexSecondary2];
+            if(userIndex != -1) {
+                clientDB[userIndex]->secondary2Worker = secondary2Address;
+            }
         } else {
             reply->set_secondary2("NONE");
-            clientDB[userIndex]->secondary2Worker = NULL;
+            if(userIndex != -1) {
+                clientDB[userIndex]->secondary2Worker = "";
+            }
         }
         
         return Status::OK;
@@ -371,7 +433,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             return Status::CANCELLED;
         }
         
-        string workerAddress = clientDB[clientIndex]->primaryWorker->getWorkerAddress();
+        string workerAddress = clientDB[clientIndex]->primaryWorker;
         
         reply->set_msg(workerAddress);
         
@@ -387,9 +449,10 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Client* client = new Client(username);
             
             //find existing WorkerProcess to align with
+            
             for(int i = 0; i < masterInfo.listWorkers.size(); i++){
                 if(masterInfo.listWorkers[i]->hostname == address){
-                    client->primaryWorker = masterInfo.listWorkers[i];
+                    client->primaryWorker = masterInfo.listWorkers[i]->getWorkerAddress();
                 }
             }
             

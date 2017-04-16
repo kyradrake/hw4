@@ -215,6 +215,8 @@ class WorkerToMasterConnection {
         // Context for the client
         ClientContext context;
         
+        cout << "\nWorker - Calling FindPrimaryWorker\n";
+        
         Status status = masterStub->FindPrimaryWorker(&context, request, &reply);
         
         if(status.ok()) {
