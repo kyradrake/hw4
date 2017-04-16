@@ -303,27 +303,30 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         int userIndex = findUser(clientUsername);
         
         if(indexPrimary != -1){
-            string primaryAddress = masterInfo.listWorkers[indexPrimary]->hostname + ":" + masterInfo.listWorkers[indexPrimary]->portnumber;
+            string primaryAddress = masterInfo.listWorkers[indexPrimary]->getWorkerAddress();
             reply->set_primary(primaryAddress);
             client_db[userIndex].primaryWorker = masterInfo.listWorkers[indexPrimary];
         } else {
             reply->set_primary("NONE");
+            client_db[userIndex].primaryWorker = NULL;
         }
         
         if(indexSecondary1 != -1){
-            string secondary1Address = masterInfo.listWorkers[indexSecondary1]->hostname + ":" + masterInfo.listWorkers[indexSecondary1]->portnumber;
+            string secondary1Address = masterInfo.listWorkers[indexSecondary1]->getWorkerAddress();
             reply->set_secondary1(secondary1Address);
             client_db[userIndex].secondary1Worker = masterInfo.listWorkers[indexSecondary1];
         } else {
             reply->set_secondary1("NONE");
+            client_db[userIndex].secondary1Worker = NULL;
         }
         
         if(indexSecondary2 != -1){
-            string secondary2Address = masterInfo.listWorkers[indexSecondary2]->hostname + ":" + masterInfo.listWorkers[indexSecondary2]->portnumber;
+            string secondary2Address = masterInfo.listWorkers[indexSecondary2]->getWorkerAddress();
             reply->set_secondary2(secondary2Address);
             client_db[userIndex].secondary2Worker = masterInfo.listWorkers[indexSecondary2];
         } else {
             reply->set_secondary2("NONE");
+            client_db[userIndex].secondary2Worker = NULL;
         }
         
         return Status::OK;
