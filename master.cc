@@ -583,7 +583,7 @@ void* Heartbeat(void* v){
                 }
             } else {
                 //FOR TESTING PURPOSES ONLY
-                cout << "lub-Dub" << endl;
+                //cout << "lub-Dub" << endl;
             }
         }
     }

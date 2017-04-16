@@ -676,7 +676,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     }
     
     Status CheckWorker(ServerContext* context, const Request* request, Reply* reply) override {
-        cout << "Worker - Heartbeat\n";
+        //cout << "Worker - Heartbeat\n";
         
         reply->set_msg("lub-DUB");
         
