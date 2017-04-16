@@ -448,14 +448,18 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     }
 
     //Called when the client startd and checks whether their username is taken or not
-    Status Login(ServerContext* context, const Request* request, Reply* reply) override {
-        
+    Status Login(ServerContext* context, const Request* request, Reply* reply) override {   
         string username = request->username();
+        string primaryAddress = request->arguments(0);
+        string secondary1Address = request->arguments(1);
+        string secondary2Address = request->arguments(2);
         
         //Data being sent to the server
         Request requestMaster;
         requestMaster.set_username(username);
-        requestMaster.add_arguments(workerAddress);
+        requestMaster.add_arguments(primaryAddress);
+        requestMaster.add_arguments(secondary1Address);
+        requestMaster.add_arguments(secondary2Address);
   
         //Container for the data from the server
         Reply replyMaster;

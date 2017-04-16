@@ -253,6 +253,9 @@ class MessengerClient {
         Request request;
 
         request.set_username(username);
+        request.add_arguments(primaryWorker);
+        request.add_arguments(secondaryWorker1);
+        request.add_arguments(secondaryWorker2);
 
         Reply reply;
 

@@ -240,27 +240,12 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
    }
 
     Status FindPrimaryWorker(ServerContext* context, const Request* request, AssignedWorkers* reply) override {
-        /*
-            HOW TO USE ASSIGNED WORKERS
-            
-            reply->set_primary(ADDRESS OF PRIMARY WORKER)
-            reply->set_secondary1(ADDRESS OF SECONDARY WORKER 1)
-            reply->set_secondary2(ADDRESS OF SECONDARY WORKER 2)
-        */
-        
-        //cout << "Master - Find primary and secondary workers for new client\n";
         
         string clientUsername = request->username();
        
         int indexPrimary = -1;
         int indexSecondary1 = -1;
         int indexSecondary2 = -1;
-        
-        /*
-        WorkerProcess* primary = NULL;
-        WorkerProcess* secondary1 = NULL;
-        WorkerProcess* secondary2 = NULL;
-        */
         
         int currentMin = 999999;
         
@@ -278,9 +263,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             if(status.ok()) {
                 cout << clientReply.msg() << endl;
                 if(stoi(clientReply.msg()) < currentMin){
-                    cout << "WorkerProcess address: " << masterInfo.listWorkers[i] << endl;
-                    //primary = masterInfo.listWorkers[i];
-                    //cout << "Primary Address: " << primary << endl;
                     indexPrimary = i;
                     currentMin = stoi(clientReply.msg());
                 }
@@ -356,38 +338,27 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         */
         
+        // if user is not in the database yet, userIndex=-1, meaning that they have connected for the first time
+        // if userIndex=-1, don't set their primary and secondary workers, THEY ARENT IN THE DB YET!!!!
         int userIndex = findUser(clientUsername);
-        //cout << "Master- Username: |" << clientUsername << "|\n";
-        
-        //cout << "Master- FindPrimWorker here 2, userIndex = " << userIndex << "\n\n";
         
         if(indexPrimary != -1){
-            //cout << "Master- FindPrimWorker here 2  A\n\n";
             
             string primaryAddress = masterInfo.listWorkers[indexPrimary]->getWorkerAddress();
             
-            //cout << "Master- FindPrimWorker here 2  B, primary address = " << primaryAddress << "\n\n";
-            
             reply->set_primary(primaryAddress);
-            
-            //cout << "Master- FindPrimWorker here 2  C\n\n";
             
             if(userIndex != -1) {
                 clientDB[userIndex]->primaryWorker = primaryAddress;
             }
-            
-            //cout << "Master- FindPrimWorker here 2  D\n\n";
         } else {
             reply->set_primary("NONE");
-            //cout << "Master- FindPrimWorker here 2  E\n\n";
             
             if(userIndex != -1) {
                 clientDB[userIndex]->primaryWorker = "";
             }
             
         }
-        
-        //cout << "Master- FindPrimWorker here 3\n\n";
         
         if(indexSecondary1 != -1){
             string secondary1Address = masterInfo.listWorkers[indexSecondary1]->getWorkerAddress();
@@ -402,8 +373,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
                 clientDB[userIndex]->secondary1Worker = "";
             }
         }
-        
-        //cout << "Master- FindPrimWorker here 4\n\n";
         
         if(indexSecondary2 != -1){
             string secondary2Address = masterInfo.listWorkers[indexSecondary2]->getWorkerAddress();
@@ -442,19 +411,17 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
     
     Status LoginMaster(ServerContext* context, const Request* request, Reply* reply) override {
         string username = request->username();
-        string address = request->arguments(0);
+        string primaryAddress = request->arguments(0);
+        string secondary1Address = request->arguments(1);
+        string secondary2Address = request->arguments(2);
         
         //if the username does not already exist, add it to the database
         if(!checkIfUserExists(username)){
             Client* client = new Client(username);
             
-            //find existing WorkerProcess to align with
-            
-            for(int i = 0; i < masterInfo.listWorkers.size(); i++){
-                if(masterInfo.listWorkers[i]->hostname == address){
-                    client->primaryWorker = masterInfo.listWorkers[i]->getWorkerAddress();
-                }
-            }
+            client->primaryWorker = primaryAddress;
+            client->secondary1Worker = secondary1Address;
+            client->secondary2Worker = secondary2Address;
             
             clientDB.push_back(client);
             reply->set_msg("Login Successful!");
