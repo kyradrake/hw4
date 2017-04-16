@@ -220,8 +220,18 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
        shared_ptr<Channel> workerChannel = grpc::CreateChannel(hostname + ":" + portnumber, grpc::InsecureChannelCredentials());
        WorkerProcess* worker = new WorkerProcess(hostname, portnumber, workerChannel);
        
-       //push worker object onto our list of workers
-       masterInfo.listWorkers.push_back(worker);
+       //check to see if worker already exists
+       bool alreadyExists = false;
+       for(int i = 0; i < masterInfo.listWorkers.size(); i++) {
+           if(masterInfo.listWorkers[i].getWorkerAddress() == (hostname + ":" + portnumber)){
+               masterInfo.listWorkers[i].workerStub = workerChannel;
+               alreadyExists = true;
+           }
+       }
+       
+       if(!alreadyExists) {
+           masterInfo.listWorkers.push_back(worker);
+       }
        
        cout << "Master, list workers size in WorkerConnected: " << masterInfo.listWorkers.size() << "\n";
        
@@ -263,10 +273,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             }
         }
         
-        //cout << "Master- FindPrimWorker here 1\n\n";
-        
-        /* AS WE ONLY HAVE A SINGLE SERVER WORKING RIGHT NOW, THIS CODE IS NOT NECESSARY
-        
         currentMin = 999999;
         
         //loop to find the index for the first secondary worker
@@ -280,7 +286,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
       
             if(status.ok()) {
                 cout << clientReply.msg() << endl;
-                if(stoi(clientReply.msg()) < currentMin && masterInfo.listWorkers[i].hostname != masterInfo.listWorkers[indexPrimary].hostname){
+                if(stoi(clientReply.msg()) < currentMin && masterInfo.listWorkers[i]->hostname != masterInfo.listWorkers[indexPrimary]->hostname){
                     indexSecondary1 = i;
                     currentMin = stoi(clientReply.msg());
                 }
@@ -305,7 +311,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
       
             if(status.ok()) {
                 cout << clientReply.msg() << endl;
-                if(stoi(clientReply.msg()) < currentMin && (masterInfo.listWorkers[i].hostname != masterInfo.listWorkers[indexPrimary].hostname && masterInfo.listWorkers[i].hostname != masterInfo.listWorkers[indexSecondary1].hostname)){
+                if(stoi(clientReply.msg()) < currentMin && (masterInfo.listWorkers[i]->hostname != masterInfo.listWorkers[indexPrimary]->hostname && masterInfo.listWorkers[i]->hostname != masterInfo.listWorkers[indexSecondary1]->hostname)){
                     indexSecondary2 = i;
                     currentMin = stoi(clientReply.msg());
                 }
@@ -317,7 +323,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             }
         }
         
-        */
         
         /* 
             TO DO
@@ -332,17 +337,13 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         int userIndex = findUser(clientUsername);
         
         if(indexPrimary != -1){
-            
             string primaryAddress = masterInfo.listWorkers[indexPrimary]->getWorkerAddress();
-            
             reply->set_primary(primaryAddress);
-            
             if(userIndex != -1) {
                 clientDB[userIndex]->primaryWorker = primaryAddress;
             }
         } else {
             reply->set_primary("NONE");
-            
             if(userIndex != -1) {
                 clientDB[userIndex]->primaryWorker = "";
             }
@@ -352,7 +353,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         if(indexSecondary1 != -1){
             string secondary1Address = masterInfo.listWorkers[indexSecondary1]->getWorkerAddress();
             reply->set_secondary1(secondary1Address);
-            
             if(userIndex != -1) {
                 clientDB[userIndex]->secondary1Worker = secondary1Address;
             }
