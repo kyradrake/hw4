@@ -260,7 +260,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Status status = masterInfo.listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
       
             if(status.ok()) {
-                cout << clientReply.msg() << endl;
                 if(stoi(clientReply.msg()) < currentMin){
                     indexPrimary = i;
                     currentMin = stoi(clientReply.msg());
@@ -285,7 +284,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Status status = masterInfo.listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
       
             if(status.ok()) {
-                cout << clientReply.msg() << endl;
                 if(stoi(clientReply.msg()) < currentMin && masterInfo.listWorkers[i]->hostname != masterInfo.listWorkers[indexPrimary]->hostname){
                     indexSecondary1 = i;
                     currentMin = stoi(clientReply.msg());
@@ -381,7 +379,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
     
     // Get the address for the specified client's primary worker
     Status GetClientsPrimaryWorker(ServerContext* context, const Request* request, Reply* reply) override {
-        cout << "Master - In GetClientsPrimaryWorker\n";
+        //cout << "Master - In GetClientsPrimaryWorker\n";
         string username = request->username();
         int clientIndex = findUser(username);
         
