@@ -175,34 +175,17 @@ bool checkIfUserExists(string username){
     return false;
 }
 
-class MasterHelper {
-    public:
-    string masterAddress;
-    
-    //how do I create a new worker stub to push into this thingy
-    vector<WorkerProcess*> listWorkers;
-    
-    MasterHelper(){
-        masterAddress = "";
-        listWorkers = vector<WorkerProcess*>();
-    }
-    
-    MasterHelper(string a){
-        masterAddress = a;
-        listWorkers = vector<WorkerProcess*>();
-    }
-    
-    WorkerProcess* getWorker(string address) {
-        for(WorkerProcess* w : listWorkers) {
-            if(w->getWorkerAddress() == address) {
-                return w;
-            }
-        }
-        return NULL;
-    }
-};
+string masterAddress = "";
+vector<WorkerProcess*> listWorkers = vector<WorkerProcess*>();
 
-MasterHelper masterInfo = MasterHelper();
+WorkerProcess* getWorker(string address) {
+    for(WorkerProcess* w : listWorkers) {
+        if(w->getWorkerAddress() == address) {
+            return w;
+        }
+    }
+    return NULL;
+}
 
 //hostname and portnumber for the master
 string master_hostname;
@@ -222,18 +205,18 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
        
        //check to see if worker already exists
        bool alreadyExists = false;
-       for(int i = 0; i < masterInfo.listWorkers.size(); i++) {
-           if(masterInfo.listWorkers[i]->getWorkerAddress() == (hostname + ":" + portnumber)){
-               masterInfo.listWorkers[i] = worker;
+       for(int i = 0; i < listWorkers.size(); i++) {
+           if(listWorkers[i]->getWorkerAddress() == (hostname + ":" + portnumber)){
+               listWorkers[i] = worker;
                alreadyExists = true;
            }
        }
        
        if(!alreadyExists) {
-           masterInfo.listWorkers.push_back(worker);
+           listWorkers.push_back(worker);
        }
        
-       cout << "Master, list workers size in WorkerConnected: " << masterInfo.listWorkers.size() << "\n";
+       cout << "Master, list workers size in WorkerConnected: " << listWorkers.size() << "\n";
        
        return Status::OK;
    }
@@ -248,16 +231,16 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         int currentMin = 999999;
         
-        cout << "Master, FindPrimayWorker, listWorkers size: " << masterInfo.listWorkers.size() << endl;
+        cout << "Master, FindPrimayWorker, listWorkers size: " << listWorkers.size() << endl;
         
         //initial loop to find the index for the primary worker
-        for(int i = 0; i < masterInfo.listWorkers.size(); i++){
+        for(int i = 0; i < listWorkers.size(); i++){
             
             ClientContext clientContext;
             Request clientRequest;
             Reply clientReply;
             
-            Status status = masterInfo.listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
+            Status status = listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
       
             if(status.ok()) {
                 if(stoi(clientReply.msg()) < currentMin){
@@ -275,16 +258,16 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         currentMin = 999999;
         
         //loop to find the index for the first secondary worker
-        for(int i = 0; i < masterInfo.listWorkers.size(); i++){
+        for(int i = 0; i < listWorkers.size(); i++){
             
             ClientContext clientContext;
             Request clientRequest;
             Reply clientReply;
             
-            Status status = masterInfo.listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
+            Status status = listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
       
             if(status.ok()) {
-                if(stoi(clientReply.msg()) < currentMin && masterInfo.listWorkers[i]->hostname != masterInfo.listWorkers[indexPrimary]->hostname){
+                if(stoi(clientReply.msg()) < currentMin && listWorkers[i]->hostname != listWorkers[indexPrimary]->hostname){
                     indexSecondary1 = i;
                     currentMin = stoi(clientReply.msg());
                 }
@@ -299,17 +282,17 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         currentMin = 999999;
         
         //loop to find the index for the second secondary worker
-        for(int i = 0; i < masterInfo.listWorkers.size(); i++){
+        for(int i = 0; i < listWorkers.size(); i++){
             
             ClientContext clientContext;
             Request clientRequest;
             Reply clientReply;
             
-            Status status = masterInfo.listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
+            Status status = listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
       
             if(status.ok()) {
                 cout << clientReply.msg() << endl;
-                if(stoi(clientReply.msg()) < currentMin && (masterInfo.listWorkers[i]->hostname != masterInfo.listWorkers[indexPrimary]->hostname && masterInfo.listWorkers[i]->hostname != masterInfo.listWorkers[indexSecondary1]->hostname)){
+                if(stoi(clientReply.msg()) < currentMin && (listWorkers[i]->hostname != listWorkers[indexPrimary]->hostname && listWorkers[i]->hostname != listWorkers[indexSecondary1]->hostname)){
                     indexSecondary2 = i;
                     currentMin = stoi(clientReply.msg());
                 }
@@ -335,7 +318,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         int userIndex = findUser(clientUsername);
         
         if(indexPrimary != -1){
-            string primaryAddress = masterInfo.listWorkers[indexPrimary]->getWorkerAddress();
+            string primaryAddress = listWorkers[indexPrimary]->getWorkerAddress();
             reply->set_primary(primaryAddress);
             if(userIndex != -1) {
                 clientDB[userIndex]->primaryWorker = primaryAddress;
@@ -349,7 +332,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         }
         
         if(indexSecondary1 != -1){
-            string secondary1Address = masterInfo.listWorkers[indexSecondary1]->getWorkerAddress();
+            string secondary1Address = listWorkers[indexSecondary1]->getWorkerAddress();
             reply->set_secondary1(secondary1Address);
             if(userIndex != -1) {
                 clientDB[userIndex]->secondary1Worker = secondary1Address;
@@ -362,7 +345,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         }
         
         if(indexSecondary2 != -1){
-            string secondary2Address = masterInfo.listWorkers[indexSecondary2]->getWorkerAddress();
+            string secondary2Address = listWorkers[indexSecondary2]->getWorkerAddress();
             reply->set_secondary2(secondary2Address);
             if(userIndex != -1) {
                 clientDB[userIndex]->secondary2Worker = secondary2Address;
@@ -566,8 +549,8 @@ void* RunMaster(void* v) {
     unique_ptr<Server> master(builder.BuildAndStart());
     cout << "Master - Master listening on " << address << endl;
 
-    //setting up MasterHelper class
-    masterInfo = MasterHelper(address);
+    //setting up MasterAddress
+    masterAddress = address;
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
@@ -579,14 +562,14 @@ void* RunMaster(void* v) {
 //heartbeat function
 void* Heartbeat(void* v){
     while(true){
-        for(int i = 0; i < masterInfo.listWorkers.size(); i++){
+        for(int i = 0; i < listWorkers.size(); i++){
             //MAY WANT TO ADD A SLEEP IN HERE JUST SO WE DON'T FLOOD OURSELVES LMAO
             
             //Send lub-DUB
             Request request;
             Reply reply;
             ClientContext context;
-            Status status = masterInfo.listWorkers[i]->workerStub->CheckWorker(&context, request, &reply);
+            Status status = listWorkers[i]->workerStub->CheckWorker(&context, request, &reply);
             
             if(!status.ok()){
                 cout << "lub-DUB FAILED, ABORT ABORT!! DO SOMETHING HERE" << endl;
@@ -600,18 +583,18 @@ void* Heartbeat(void* v){
                 */
                 
                 int deadIndex = i;
-                string serverToCheck = masterInfo.listWorkers[deadIndex]->hostname;
+                string serverToCheck = listWorkers[deadIndex]->hostname;
                 bool isServerDead = false;
                 
                 //look for a worker on the same server, see if it's only our worker or the whole server is dead
-                for(int j = 0; j < masterInfo.listWorkers.size(); j++){
-                    if(j != deadIndex && serverToCheck == masterInfo.listWorkers[j]->hostname && serverToCheck != master_hostname){
+                for(int j = 0; j < listWorkers.size(); j++){
+                    if(j != deadIndex && serverToCheck == listWorkers[j]->hostname && serverToCheck != master_hostname){
                         
                         //Send lub-DUB
                         Request requestInner;
                         Reply replyInner;
                         ClientContext contextInner;
-                        Status statusInner = masterInfo.listWorkers[j]->workerStub->CheckWorker(&contextInner, requestInner, &replyInner);
+                        Status statusInner = listWorkers[j]->workerStub->CheckWorker(&contextInner, requestInner, &replyInner);
                         
                         if(!statusInner.ok()){
                             isServerDead = true;

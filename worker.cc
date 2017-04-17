@@ -283,8 +283,11 @@ class WorkerToMasterConnection {
         Status status = masterStub->UpdateClientData(&context, request, &reply);
         
         if(status.ok()) {
-            // find client in the local database
+            
             Client client;
+            
+            // set client username
+            client.username = username;
             
             // add in followers
             for(int i = 0; i < reply.followers().size(); i++){
@@ -368,7 +371,6 @@ class WorkerToWorkerConnection {
         }
     }
 };
-
 
 
 // Searches for a connection to a worker with the specified address
@@ -533,7 +535,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         reply->set_secondary1(assignedWorkers[1]);
         reply->set_secondary2(assignedWorkers[2]);
         
-        return Status::OK; 
+        return Status::OK;
     }
     
     Status Chat(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
@@ -679,8 +681,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     
     Status NumberClientsConnected(ServerContext* context, const Request* request, Reply* reply) override {
         
-        //TESTING WITH ONLY 1. STILL HAVE TO WRITE THIS
-        reply->set_msg("1");
+        reply->set_msg("" + clientsConnected.size());
         
         return Status::OK;
     }
