@@ -76,6 +76,7 @@ using hw4::AssignedWorkers;
 using hw4::MessengerMaster;
 using hw4::MessengerWorker;
 using hw4::ClientListReply;
+using hw4::CreateWorkerRequest;
 
 using namespace std;
 
@@ -606,8 +607,57 @@ void* Heartbeat(void* v){
                 
                 if(isServerDead){
                     //server's dead, do what we need to do in here
+                    
+                    //I'm not sure if we have to do much of anything actually, everything should be restarted from the script. We already pull data generically.
                 } else {
-                    //worker's dead, do wwhta we need to do in here
+                    //worker's dead, do what we need to do in here
+                    //Need to do: re-run worker on address found in i
+                    
+                    string workerHostname = listWorkers[deadIndex]->hostname;
+                    string workerPort = listWorkers[deadIndex]->portnumber;
+                    
+                    //if the dead worker is on the master's server, we can have the master start it
+                    if(listWorkers[deadIndex]->hostname == master_hostname){
+                        
+                        string systemArgs = "./worker -h " + workerHostname + " -p " + workerPort + " -m " + master_hostname + " -a " + master_portnumber + " &";
+                        system(systemArgs.c_str());
+                        cout << "created new worker process on " << workerHostname << ":" << workerPort << endl;
+                        
+                    } else {
+                        
+                        CreateWorkerRequest requestWorker;
+                        requestWorker.set_worker_hostname(workerHostname);
+                        requestWorker.set_worker_port(workerPort);
+
+                        //CAN I BE SETTING THE MASTER INFO HERE? IS THIS SAFE?
+                        requestWorker.set_master_hostname(master_hostname);
+                        requestWorker.set_master_port(master_portnumber);
+
+                        Reply replyWorker;
+                        ClientContext contextWorker;
+                        
+                        //find a worker on the hostname we want, save that index
+                        int createWorkerIndex = -1;
+                        for(int j = 0; j < listWorkers.size(); j++){
+                            if(listWorkers[j]->hostname == workerHostname){
+                                createWorkerIndex = j;
+                            }
+                        }
+                        
+                        //check to see if we found the hostname
+                        if(createWorkerIndex != -1){
+                            Status statusWorker = listWorkers[createWorkerIndex]->workerStub->StartNewWorker(&contextWorker, requestWorker, &replyWorker);
+
+                            if(statusWorker.ok()){
+                                cout << "created new worker process on " << workerHostname << ":" << workerPort << endl;
+                            } else {
+                                cout << "ERROR: couldn't create new worker process on " << workerHostname << ":" << workerPort << endl;
+                            } 
+                        } else {
+                            cout << "ERROR: could not find worker on " << workerHostname << " to create a new worker process on" << endl;
+                        }
+                    }
+
                 }
             } else {
                 //FOR TESTING PURPOSES ONLY

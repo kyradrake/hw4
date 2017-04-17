@@ -88,12 +88,22 @@ service MessengerWorker {
     
     // Send message to a client's follower
     rpc MessageForFollower (FollowerMessage) returns (Reply) {}
+    
+    // Starts a new worker process
+    rpc StartNewWorker (CreateWorkerRequest) returns (Reply) {}
 }
 
 message ClientListReply {
     string username = 1;
     repeated string followers = 2;
     repeated string following = 3;
+}
+
+message CreateWorkerRequest {
+    string worker_hostname = 1;
+    string worker_port = 2;
+    string master_hostname = 3;
+    string master_port = 4;
 }
 
 message Request {

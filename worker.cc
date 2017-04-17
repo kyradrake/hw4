@@ -77,6 +77,7 @@ using hw4::FollowerMessage;
 using hw4::AssignedWorkers;
 using hw4::MessengerWorker;
 using hw4::MessengerMaster;
+using hw4::CreateWorkerRequest;
 
 using namespace std;
 
@@ -724,6 +725,23 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         //cout << "Worker - Heartbeat\n";
         
         reply->set_msg("lub-DUB");
+        
+        return Status::OK;
+    }
+    
+    Status StartNewWorker(ServerContext* context, const CreateWorkerRequest* request, Reply* reply) override {
+        
+        string workerHostname = request->worker_hostname();
+        string workerPort = request->worker_port();
+        string masterHostname = request->master_hostname();
+        string masterPort = request->master_port();
+        
+        // ./worker -h lenss-comp1.cse.tamu.edu -p 4133 -m lenss-comp1.cse.tamu.edu -a 4132 &
+        
+        string systemArgs = "./worker -h " + workerHostname + " -p " + workerPort + " -m " + masterHostname + " -a " + masterPort + " &";
+        system(systemArgs.c_str());
+        
+        reply->set_msg("Made new worker on: " + workerPort);
         
         return Status::OK;
     }
