@@ -241,8 +241,9 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Reply clientReply;
             
             Status status = listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
-      
+            
             if(status.ok()) {
+                cout << "Status was ok - clientReply.msg(): " + clientReply.msg();
                 if(stoi(clientReply.msg()) < currentMin){
                     indexPrimary = i;
                     currentMin = stoi(clientReply.msg());
@@ -315,6 +316,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         // if user is not in the database yet, userIndex=-1, meaning that they have connected for the first time
         // if userIndex=-1, don't set their primary and secondary workers, THEY ARENT IN THE DB YET!!!!
+        
         int userIndex = findUser(clientUsername);
         
         if(indexPrimary != -1){

@@ -681,7 +681,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     
     Status NumberClientsConnected(ServerContext* context, const Request* request, Reply* reply) override {
         
-        reply->set_msg("" + clientsConnected.size());
+        reply->set_msg("" + to_string(clientsConnected.size()));
         
         return Status::OK;
     }
