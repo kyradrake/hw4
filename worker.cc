@@ -563,11 +563,9 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 masterConnection->UpdateClientData(username);
             }
             
-            
             // open "username.txt"
             string filename = username + ".txt";
             ofstream userFile(filename,ios::app|ios::out|ios::in);
-            
             
             // generate message to output to file and to followers
             google::protobuf::Timestamp temptime = message.timestamp();
@@ -597,15 +595,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
 
                     // add new message to following.txt file
                     file << fileinput;
-                    
-                    /*
-                        QUESTION
-
-                        How to deal with followingFileSize across 3 servers?
-
-                    */
-                    //temp_client->following_file_size++;
-   
                 }
                 
                 // write message on other two servers
@@ -619,31 +608,36 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             //If message = "Set Stream", print the first 20 chats from the people you follow
             else{
                 string line;
-                vector<string> newest_twenty;
+                vector<string> newestTwenty;
                 ifstream in(username+"following.txt");
                 int count = 0;
                 
+                // Get size of following.txt file
+                int followingFileSize = 0;
+                ifstream i(username+"following.txt");
+                while(getline(i,line)) {
+                    followingFileSize++;
+                }
+                
                 //Read the last up-to-20 lines (newest 20 messages) from userfollowing.txt
                 while(getline(in, line)){
-                    if(c->following_file_size > 20){
-                        if(count < c->following_file_size-20){
+                    if(followingFileSize > 20){
+                        if(count < followingFileSize-20){
                             count++;
                             continue;
                         }
                     }
-                    newest_twenty.push_back(line);
+                    newestTwenty.push_back(line);
                 }
                 
-                Message new_msg; 
+                Message newMsg; 
                 //Send the newest messages to the client to be displayed
-                for(int i = 0; i<newest_twenty.size(); i++){
-                    new_msg.set_msg(newest_twenty[i]);
-                    stream->Write(new_msg);
+                for(int i = 0; i<newestTwenty.size(); i++){
+                    newMsg.set_msg(newestTwenty[i]);
+                    stream->Write(newMsg);
                 }    
                 continue;
             } 
-            
-            
         }
         return Status::OK;
     }
@@ -685,18 +679,11 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         if(userIndex != -1) {
             Client* client = &clientsConnected[userIndex];
         
-            // Write message to client's stream
+            // Write message to client's stream if they are in chat mode
             if(client->stream != 0) {
                 Message newMsg; 
                 newMsg.set_msg(message);
                 client->stream->Write(newMsg);
-            }
-            else {
-                /*
-                    TO DO
-                    
-                    Do I need to write to text file in this case??
-                */
             }
         }
         else {
