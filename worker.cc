@@ -726,8 +726,23 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         
         // ./worker -h lenss-comp1.cse.tamu.edu -p 4133 -m lenss-comp1.cse.tamu.edu -a 4132 &
         
-        string systemArgs = "./worker -h " + workerHostname + " -p " + workerPort + " -m " + masterHostname + " -a " + masterPort + " &";
-        system(systemArgs.c_str());
+        pid_t child = fork();
+        if(child == 0){
+            char* argv[11];
+            
+            //string systemArgs = "./worker -h " + workerHostname + " -p " + workerPort + " -m " + masterHostname + " -a " + masterPort + " &";
+            vector<string> args = {"./worker", "-h", workerHostname, "-p", workerPort, "-m", masterHostname, "-a", masterPort, "&"};
+            
+            for(int i = 0; i < args.size(); i++){
+                string a = args[i];
+                argv[i] = (char *)a.c_str();
+            }
+            
+            argv[10] = NULL;
+            
+            execv("./worker", argv);
+            
+        }
         
         reply->set_msg("Made new worker on: " + workerPort);
         

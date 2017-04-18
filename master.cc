@@ -632,7 +632,15 @@ void* Heartbeat(void* v){
                     //Need to do: re-run worker on address found in i
                     
                     string workerHostname = listWorkers[deadIndex]->hostname;
-                    string workerPort = listWorkers[deadIndex]->portnumber;
+                    
+                    //loop through the current workers on our hostname, find the largest port and increment it by 1 for our new port
+                    int nPort = -1;
+                    for(int j = 0; j < listWorkers.size(); j++){
+                        if(listWorkers[i]->hostname == workerHostname && nPort < stoi(listWorkers[i]->portnumber)){
+                            nPort = stoi(listWorkers[i]->portnumber);
+                        }
+                    }
+                    string workerPort = to_string(nPort+1);
                     
                     //if the dead worker is on the master's server, we can have the master start it
                     if(listWorkers[deadIndex]->hostname == master_hostname){
@@ -709,8 +717,8 @@ int main(int argc, char** argv) {
     
     cout << "Master - Thread started\n";
     
-    //pthread_t heartbeatThread;
-	//pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
+    pthread_t heartbeatThread;
+	pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
     
     cout << "Master - Heartbeat Thread started\n";
     
