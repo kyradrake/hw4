@@ -299,11 +299,22 @@ class MessengerClient {
             string input = "Set Stream";
 
             Message m = MakeMessage(uname, input);
+            // set workers in the message
+            m.set_primary(primaryWorker);
+            m.set_secondary1(secondaryWorker1);
+            m.set_secondary2(secondaryWorker2);
+            
             stream->Write(m);
 
             cout << "Enter chat messages: \n";
             while(getline(cin, input)) {
                 m = MakeMessage(uname, input);
+                // set workers in the message
+                m.set_primary(primaryWorker);
+                m.set_secondary1(secondaryWorker1);
+                m.set_secondary2(secondaryWorker2);
+                
+                // write message to stream
                 stream->Write(m);
             }
             stream->WritesDone();
@@ -322,6 +333,7 @@ class MessengerClient {
             }
             
             /*
+            // For stress testing
             }
             else {
                 string input = "Set Stream";
@@ -358,6 +370,10 @@ class MessengerClient {
             Message m;
             while(stream->Read(&m)){
                 cout << m.username() << " -- " << m.msg() << endl;
+        
+                // reset secondary workers in case they have been changed
+                secondaryWorker1 = m.secondary1();
+                secondaryWorker2 = m.secondary2();
             }
             Status status = stream->Finish();
             
