@@ -728,7 +728,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             argv[10] = NULL;
             
             execv("./worker", argv);
-            
         }
         
         reply->set_msg("Made new worker on: " + workerPort);

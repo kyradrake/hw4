@@ -244,7 +244,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Status status = listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
             
             if(status.ok()) {
-                cout << "Status was ok - clientReply.msg(): " + clientReply.msg();
                 if(stoi(clientReply.msg()) < currentMin){
                     indexPrimary = i;
                     currentMin = stoi(clientReply.msg());
@@ -626,7 +625,11 @@ void* Heartbeat(void* v){
                 if(isServerDead){
                     //server's dead, do what we need to do in here
                     
-                    //I'm not sure if we have to do much of anything actually, everything should be restarted from the script. We already pull data generically.
+                    //remove dead worker from the database
+                    listWorkers.erase(listWorkers.begin()+deadIndex);
+                    
+                    //new workers will be started via the script once the server is back on
+                    
                 } else {
                     //worker's dead, do what we need to do in here
                     //Need to do: re-run worker on address found in i
@@ -636,17 +639,35 @@ void* Heartbeat(void* v){
                     //loop through the current workers on our hostname, find the largest port and increment it by 1 for our new port
                     int nPort = -1;
                     for(int j = 0; j < listWorkers.size(); j++){
-                        if(listWorkers[i]->hostname == workerHostname && nPort < stoi(listWorkers[i]->portnumber)){
-                            nPort = stoi(listWorkers[i]->portnumber);
+                        if(listWorkers[j]->hostname == workerHostname && nPort < stoi(listWorkers[j]->portnumber)){
+                            nPort = stoi(listWorkers[j]->portnumber);
                         }
                     }
                     string workerPort = to_string(nPort+1);
                     
+                    //remove dead worker from the database
+                    listWorkers.erase(listWorkers.begin()+deadIndex);
+                    
                     //if the dead worker is on the master's server, we can have the master start it
                     if(listWorkers[deadIndex]->hostname == master_hostname){
+
+                        pid_t child = fork();
+                        if(child == 0){
+                            char* argv[11];
+
+                            //string systemArgs = "./worker -h " + workerHostname + " -p " + workerPort + " -m " + masterHostname + " -a " + masterPort + " &";
+                            vector<string> args = {"./worker", "-h", workerHostname, "-p", workerPort, "-m", master_hostname, "-a", master_portnumber, "&"};
+
+                            for(int j = 0; j < args.size(); j++){
+                                string a = args[j];
+                                argv[j] = (char *)a.c_str();
+                            }
+
+                            argv[10] = NULL;
+
+                            execv("./worker", argv);
+                        }
                         
-                        string systemArgs = "./worker -h " + workerHostname + " -p " + workerPort + " -m " + master_hostname + " -a " + master_portnumber + " &";
-                        system(systemArgs.c_str());
                         cout << "created new worker process on " << workerHostname << ":" << workerPort << endl;
                         
                     } else {
@@ -655,7 +676,6 @@ void* Heartbeat(void* v){
                         requestWorker.set_worker_hostname(workerHostname);
                         requestWorker.set_worker_port(workerPort);
 
-                        //CAN I BE SETTING THE MASTER INFO HERE? IS THIS SAFE?
                         requestWorker.set_master_hostname(master_hostname);
                         requestWorker.set_master_port(master_portnumber);
 
