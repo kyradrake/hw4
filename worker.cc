@@ -135,24 +135,6 @@ struct Client {
     
     ServerReaderWriter<Message, Message>* stream = 0;
     
-    /*
-    Client() {
-        username = "";
-        following_file_size = 0;
-        clientFollowers = vector<ClientFollower>();
-        clientFollowing = vector<string>();
-        stream = 0;
-    }
-    
-    Client(string uname) {
-        username = uname;
-        following_file_size = 0;
-        clientFollowers = vector<ClientFollower>();
-        clientFollowing = vector<string>();
-        stream = 0;
-    }
-    */
-    
     bool operator==(const Client& c1) const{
         return (username == c1.username);
     }
@@ -243,8 +225,6 @@ class WorkerToMasterConnection {
         // Context for the client
         ClientContext context;
         
-        cout << "\nWorker - Calling FindPrimaryWorker\n";
-        
         Status status = masterStub->FindPrimaryWorker(&context, request, &reply);
         
         if(status.ok()) {
@@ -259,7 +239,7 @@ class WorkerToMasterConnection {
             return workers;
         }
         else {
-            cout << "Worker Primary Worker - Error: " << status.error_code() << ": " << status.error_message() << endl;
+            cout << "Worker - Error: " << status.error_code() << ": " << status.error_message() << endl;
             
             vector<string> workers;
             workers.push_back("ERROR");
@@ -313,6 +293,7 @@ class WorkerToMasterConnection {
             bool alreadyExists = false;
             for(int i = 0; i < clientsConnected.size(); i++){
                 if(clientsConnected[i].username == username) {
+                    client.stream = clientsConnected[i].stream;
                     clientsConnected[i] = client;
                     alreadyExists = true;
                 }
@@ -497,12 +478,9 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         
         // Add User to the Database if it hasn't been added yet
         if(findUser(username) == -1) {
-            cout << "adding " << username << " to the local database\n";
             Client c;
             c.username = username;
             clientsConnected.push_back(c);
-            cout << "Client's Username: " << c.username << endl;
-            cout << "In login, " << clientsConnected.size() << endl;
         }
         
         //Data being sent to the server
@@ -558,34 +536,26 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     Status Chat(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
         
         Message message;
-        Client c;
-        cout << "Chat - Here -1\n";
+        Client* c;
         // Read messages until the client disconnects
         while(stream->Read(&message)) {
-            cout << "Chat - Here 0\n";
             string username = message.username();
             
             int clientIndex = findUser(username);
-            cout << "Username: " << username << ", clientIndex: " << clientIndex << endl;
-            c = clientsConnected[clientIndex];
+            c = &clientsConnected[clientIndex];
             
-            cout << "Chat - Here 1\n";
             // initialize client stream if it hasn't been yet
-            if(c.stream == 0) {
-                c.stream = stream;
-                cout << "Chat - Here 2\n";
+            if(c->stream == 0) {
+                c->stream = stream;
                 //update the data in our client database
                 masterConnection->UpdateClientData(username);
-                cout << "Chat - Here 3\n";
             }
             
-            cout << "Chat - Here 3 A\n";
             
             // open "username.txt"
             string filename = username + ".txt";
             ofstream userFile(filename,ios::app|ios::out|ios::in);
             
-            cout << "Chat - Here 3 B\n";
             
             // generate message to output to file and to followers
             google::protobuf::Timestamp temptime = message.timestamp();
@@ -597,7 +567,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 // write message to "username.txt"
                 userFile << fileinput;
                 
-                cout << "Chat - Here 4\n";
                 
                 /*
                     TO DO
@@ -634,17 +603,15 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             //} */
             
             // send message to each follower
-            for(ClientFollower follower : c.clientFollowers) {
+            for(ClientFollower follower : c->clientFollowers) {
                 /*
                     QUESTION
                     Is it too taxing on the master to constantly ask for primary worker for each client? 
                     Maybe we do something special if a worker is known to have died. We can search the entire database and make updates only when a worker dies. This is more efficient, but much more difficult to implement.
                     Somethings to think about.....
                 */
-                cout << "Chat - Here 5\n";
                 // send message to follower's chat stream
                 findWorker(follower.worker)->SendMessageToFollower(follower.username, fileinput);
-                cout << "Chat - Here 6\n";
                 // put the message in their following.txt file
                 string followerUsername = follower.username;
                 
@@ -654,7 +621,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 
                 // add new message to following.txt file
                 file << fileinput;
-                cout << "Chat - Here 7\n";
                 /*
                     QUESTION
                     
@@ -679,7 +645,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 */
             }
         }
-        cout << "Chat - Here 8\n";
         return Status::OK;
     }
     
@@ -704,20 +669,18 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     }
     
     Status MessageForFollower(ServerContext* context, const FollowerMessage* request, Reply* reply) override {
-        cout << "Received a Message for a Follower\n";
         
         string username = request->username();
         string message = request->msg();
         
         // Find client in database message is for
-        Client client = clientsConnected[findUser(username)];
+        Client* client = &clientsConnected[findUser(username)];
         
         // Write message to client's stream
-        if(client.stream != 0) {
+        if(client->stream != 0) {
             Message newMsg; 
             newMsg.set_msg(message);
-            
-            client.stream->Write(newMsg);
+            client->stream->Write(newMsg);
         }
         else {
             /* 
