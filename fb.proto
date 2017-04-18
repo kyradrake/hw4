@@ -93,7 +93,7 @@ service MessengerWorker {
     rpc StartNewWorker (CreateWorkerRequest) returns (Reply) {}
     
     // Sends a chat from one worker to another and writes the chat into its text file
-    rpc SaveChat (Request) returns (Reply) {}
+    rpc SaveChat (SaveMessage) returns (Reply) {}
 }
 
 message ClientListReply {
@@ -156,4 +156,15 @@ message FollowerMessage {
     
     // message
     string msg = 2;
+}
+
+message SaveMessage {
+    // username for sender of message
+    string username = 1;
+    
+    // usernames for followers of message sender
+    repeated string followers = 2;
+    
+    // message from user
+    string message = 3;
 }

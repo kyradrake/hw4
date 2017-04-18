@@ -75,6 +75,7 @@ using hw4::Reply;
 using hw4::WorkerAddress;
 using hw4::FollowerMessage;
 using hw4::AssignedWorkers;
+using hw4::SaveMessage;
 using hw4::MessengerWorker;
 using hw4::MessengerMaster;
 using hw4::CreateWorkerRequest;
@@ -134,6 +135,11 @@ struct Client {
     vector<string> clientFollowing;
     
     ServerReaderWriter<Message, Message>* stream = 0;
+    
+    // addresses for the client's primary and secondary workers
+    string primaryWorker;
+    string secondary1Worker;
+    string secondary2Worker;
     
     bool operator==(const Client& c1) const{
         return (username == c1.username);
@@ -208,6 +214,7 @@ class WorkerToMasterConnection {
         }
     }
     
+    // returns a vector of addresses to the primary and secondary workers assigned to the specified client
     vector<string> FindPrimaryWorker(string clientUsername) {
         if(masterStub == NULL) {
             vector<string> error;
@@ -287,7 +294,6 @@ class WorkerToMasterConnection {
             for(int i = 0; i < reply.following().size(); i++){
                 client.clientFollowing.push_back(reply.following(i));
             }
-
             
             //check to see if updating, or creating new data
             bool alreadyExists = false;
@@ -318,14 +324,6 @@ class WorkerToWorkerConnection {
         workerStub = MessengerWorker::NewStub(channel);
     }
     
-    /* 
-        NOTE
-        Not sure if we will use this but it could come in handy at some point
-    */
-    bool operator==(const WorkerToWorkerConnection& w1) const {
-        return (connectedWorkerAddress == w1.connectedWorkerAddress);
-    }
-    
     // sends the message to the specified user's worker
     void SendMessageToFollower(string followerUsername, string msg) {
         // Data being sent to the follower's worker
@@ -353,11 +351,15 @@ class WorkerToWorkerConnection {
         }
     }
     
-    void SaveChat(string username, string chatMessage) {
-        
-        Request request;
+    // sends a message to the worker to save a chat message in the user's text file
+    // and save the chat message to the user's followers' text files
+    void SaveChat(string username, vector<string> followerUsernames, string chatMessage) {
+        SaveMessage request;
         request.set_username(username);
-        request.add_arguments(chatMessage);
+        request.set_message(chatMessage);
+        for(int i=0; i<followerUsernames.size(); i++) {
+            request.add_followers(followerUsernames[i]);
+        }
         
         Reply reply;
         ClientContext context;
@@ -476,11 +478,21 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         string secondary1Address = request->arguments(1);
         string secondary2Address = request->arguments(2);
         
+        int clientIndex = findUser(username);
+        
         // Add User to the Database if it hasn't been added yet
-        if(findUser(username) == -1) {
+        if(clientIndex == -1) {
             Client c;
             c.username = username;
+            c.primaryWorker = primaryAddress;
+            c.secondary1Worker = secondary1Address;
+            c.secondary2Worker = secondary2Address;
             clientsConnected.push_back(c);
+        }
+        else {
+            clientsConnected[clientIndex].primaryWorker = primaryAddress;
+            clientsConnected[clientIndex].secondary1Worker = secondary1Address;
+            clientsConnected[clientIndex].secondary2Worker = secondary2Address;
         }
         
         //Data being sent to the server
@@ -567,16 +579,45 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 // write message to "username.txt"
                 userFile << fileinput;
                 
+                // store usernames for all followers
+                vector<string> followerUsernames = vector<string>();
                 
-                /*
-                    TO DO
+                // send message to each follower
+                for(ClientFollower follower : c->clientFollowers) {
+                    // send message to follower's chat stream
+                    findWorker(follower.worker)->SendMessageToFollower(follower.username, fileinput);
                     
-                    Notify secondary1 and secondary2 workers to output the new message to the text files on those servers as well
-                */
+                    // get follower's username
+                    string followerUsername = follower.username;
+                    followerUsernames.push_back(followerUsername);
+
+                    // open following.txt file on local server
+                    string followingFile = followerUsername + "following.txt";
+                    ofstream file(followingFile,ios::app|ios::out|ios::in);
+
+                    // add new message to following.txt file
+                    file << fileinput;
+                    
+                    /*
+                        QUESTION
+
+                        How to deal with followingFileSize across 3 servers?
+
+                    */
+                    //temp_client->following_file_size++;
+   
+                }
                 
+                // write message on other two servers
+                if(c->secondary1Worker != "NONE") {
+                    findWorker(c->secondary1Worker)->SaveChat(username, followerUsernames, fileinput);    
+                }
+                if(c->secondary2Worker != "NONE") {
+                    findWorker(c->secondary2Worker)->SaveChat(username, followerUsernames, fileinput);
+                }
             }
             //If message = "Set Stream", print the first 20 chats from the people you follow
-            /*else{
+            else{
                 string line;
                 vector<string> newest_twenty;
                 ifstream in(username+"following.txt");
@@ -600,67 +641,29 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                     stream->Write(new_msg);
                 }    
                 continue;
-            //} */
+            } 
             
-            // send message to each follower
-            for(ClientFollower follower : c->clientFollowers) {
-                /*
-                    QUESTION
-                    Is it too taxing on the master to constantly ask for primary worker for each client? 
-                    Maybe we do something special if a worker is known to have died. We can search the entire database and make updates only when a worker dies. This is more efficient, but much more difficult to implement.
-                    Somethings to think about.....
-                */
-                // send message to follower's chat stream
-                findWorker(follower.worker)->SendMessageToFollower(follower.username, fileinput);
-                // put the message in their following.txt file
-                string followerUsername = follower.username;
-                
-                // open following.txt file on local server
-                string followingFile = followerUsername + "following.txt";
-                ofstream file(followingFile,ios::app|ios::out|ios::in);
-                
-                // add new message to following.txt file
-                file << fileinput;
-                /*
-                    QUESTION
-                    
-                    How to deal with followingFileSize across 3 servers?
-                    
-                */
-                //temp_client->following_file_size++;
-                
-                /*
-                    NOTE: 
-                    IDK what this is doing.... Why are they outputting the message into followerfollowing.txt and follower.txt? 
-                    I don't think we need this code
-
-                    ofstream user_file(temp_username + ".txt",ios::app|ios::out|ios::in);
-                    user_file << fileinput;
-                */
-                
-                /*
-                    TO DO
-                    
-                    Notify secondary1 and secondary2 workers to add the new message to the "following.txt" files on the other two servers
-                */
-            }
+            
         }
         return Status::OK;
     }
     
+    // TO DO -------------------------
+    // I don't think we have a use for this
     Status Worker(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
         //workerPort = reply.msg();
         //figure out how to actually send the chat messages simultaneously with the chat function
         return Status::OK; 
     }
     
-    
+    // TO DO -------------------------
     Status UpdateMasterAddress(ServerContext* context, const Request* request, Reply* reply) override {
         cout << "Worker - Updating master address\n";
         
         return Status::OK;
     }
     
+    // Master sends RPC to worker to check how many clients are connected to the worker
     Status NumberClientsConnected(ServerContext* context, const Request* request, Reply* reply) override {
         
         reply->set_msg("" + to_string(clientsConnected.size()));
@@ -668,46 +671,52 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         return Status::OK;
     }
     
+    // Worker sends RPC to worker to write a chat message to a client's stream
     Status MessageForFollower(ServerContext* context, const FollowerMessage* request, Reply* reply) override {
         
         string username = request->username();
         string message = request->msg();
         
         // Find client in database message is for
-        Client* client = &clientsConnected[findUser(username)];
+        int userIndex = findUser(username);
         
-        // Write message to client's stream
-        if(client->stream != 0) {
-            Message newMsg; 
-            newMsg.set_msg(message);
-            client->stream->Write(newMsg);
+        // Make sure client is in the database
+        // If so, this is the primary worker
+        if(userIndex != -1) {
+            Client* client = &clientsConnected[userIndex];
+        
+            // Write message to client's stream
+            if(client->stream != 0) {
+                Message newMsg; 
+                newMsg.set_msg(message);
+                client->stream->Write(newMsg);
+            }
+            else {
+                /*
+                    TO DO
+                    
+                    Do I need to write to text file in this case??
+                */
+            }
         }
         else {
-            /* 
-                What TO DO Here????  
-            */
+            reply->set_msg("Not Primary Worker");
+            return Status::OK;
         }
-        
-        /*
-            TO DO
-            
-            It would be a good idea to make sure this is the assigned "Primary Worker" for the username. If it's not, then something went wrong and the message got routed to the wrong worker
-        */
-        
         
         reply->set_msg("Success");
         
         return Status::OK;
     }
     
+    // "Heartbeat" function - master checks to see if worker is still active
     Status CheckWorker(ServerContext* context, const Request* request, Reply* reply) override {
-        //cout << "Worker - Heartbeat\n";
-        
         reply->set_msg("lub-DUB");
         
         return Status::OK;
     }
     
+    // Start a new worker on the server
     Status StartNewWorker(ServerContext* context, const CreateWorkerRequest* request, Reply* reply) override {
         
         string workerHostname = request->worker_hostname();
@@ -725,10 +734,11 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         return Status::OK;
     }
     
-    Status SaveChat(ServerContext* context, const Request* request, Reply* reply) override {
+    // save a chat message in the text files for the user who sent the message and all the followers of that user
+    Status SaveChat(ServerContext* context, const SaveMessage* request, Reply* reply) override {
         
         string username = request->username();
-        string chatMessage = request->arguments(0);
+        string chatMessage = request->message();
         
         //find the user in the database we need to write to
         int clientIndex = findUser(username);
@@ -740,6 +750,12 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         userFile << chatMessage;
         
         //save the chat message in their followers text files
+        for(string follower : request->followers()) {
+            string followingFile = follower + "following.txt";
+            ofstream file(followingFile,ios::app|ios::out|ios::in);
+            file << chatMessage;
+        }
+        /*
         for(ClientFollower follower : c.clientFollowers) {
             
             string followerUsername = follower.username;
@@ -748,6 +764,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             ofstream file(followingFile,ios::app|ios::out|ios::in);
             file << chatMessage;
         }
+        */
         
         //save chatMessage here somehow, ask Kyra on how to do it exactly
         
