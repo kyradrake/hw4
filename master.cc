@@ -416,30 +416,30 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             
             //check to see if join has already happened
             bool exists = false;
-            for(int i = 0; i < clientDB[userIndex]->clientFollowers.size(); i++){
-                if(clientDB[userIndex]->clientFollowers[i] == usernameToJoin){
+            for(int i = 0; i < clientDB[userIndex]->clientFollowing.size(); i++){
+                if(clientDB[userIndex]->clientFollowing[i] == usernameToJoin){
                     exists = true;
                 }
             }
             
             //if it hasn't, join now
             if(!exists){
-               clientDB[userIndex]->clientFollowers.push_back(usernameToJoin); 
+               clientDB[userIndex]->clientFollowing.push_back(usernameToJoin); 
             }
             
             int userJoinIndex = findUser(usernameToJoin);
             
             //check to see if join has already happened
             exists = false;
-            for(int i = 0; i < clientDB[userJoinIndex]->clientFollowing.size(); i++){
-                if(clientDB[userJoinIndex]->clientFollowing[i] == username){
+            for(int i = 0; i < clientDB[userJoinIndex]->clientFollowers.size(); i++){
+                if(clientDB[userJoinIndex]->clientFollowers[i] == username){
                     exists = true;
                 }
             }
             
             //if it hasn't, join now
             if(!exists){
-                clientDB[userJoinIndex]->clientFollowing.push_back(username);
+                clientDB[userJoinIndex]->clientFollowers.push_back(username);
             }
             
             reply->set_msg("Join Successful!");
@@ -459,11 +459,29 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             
             //check to see if leave has already happened. If it hasn't, leave now
             int userIndex = findUser(username);
-            clientDB[userIndex]->clientFollowers.erase(find(clientDB[userIndex]->clientFollowers.begin(), clientDB[userIndex]->clientFollowers.end(), usernameToLeave)); 
+            
+            bool exists = false;
+            for(int i = 0; i < clientDB[userIndex]->clientFollowing.size(); i++){
+                if(clientDB[userIndex]->clientFollowing[i] == usernameToLeave){
+                    exists = true;
+                }
+            }
+            if(exists){
+                clientDB[userIndex]->clientFollowing.erase(find(clientDB[userIndex]->clientFollowing.begin(), clientDB[userIndex]->clientFollowing.end(), usernameToLeave));
+            }
             
             //check to see if leave has already happened. If it hasn't, leave now
             int userLeaveIndex = findUser(usernameToLeave);
-            clientDB[userLeaveIndex]->clientFollowing.erase(find(clientDB[userLeaveIndex]->clientFollowing.begin(), clientDB[userLeaveIndex]->clientFollowing.end(), username)); 
+            
+            exists = false;
+            for(int i = 0; i < clientDB[userLeaveIndex]->clientFollowers.size(); i++){
+                if(clientDB[userLeaveIndex]->clientFollowers[i] == username){
+                    exists = true;
+                }
+            }
+            if(exists){
+                clientDB[userLeaveIndex]->clientFollowers.erase(find(clientDB[userLeaveIndex]->clientFollowers.begin(), clientDB[userLeaveIndex]->clientFollowers.end(), username));
+            }
             
             reply->set_msg("Leave Successful!");
         } else {
