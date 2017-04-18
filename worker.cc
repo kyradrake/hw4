@@ -160,7 +160,6 @@ class WorkerToMasterConnection {
     public:
     unique_ptr<MessengerMaster::Stub> masterStub;
     
-    
     WorkerToMasterConnection(shared_ptr<Channel> channel){
         masterStub = MessengerMaster::NewStub(channel);
     }
@@ -299,7 +298,12 @@ class WorkerToMasterConnection {
             bool alreadyExists = false;
             for(int i = 0; i < clientsConnected.size(); i++){
                 if(clientsConnected[i].username == username) {
+                    client.primaryWorker = clientsConnected[i].primaryWorker;
+                    client.secondary1Worker = clientsConnected[i].secondary1Worker;
+                    client.secondary2Worker = clientsConnected[i].secondary2Worker;
+                    
                     client.stream = clientsConnected[i].stream;
+                    
                     clientsConnected[i] = client;
                     alreadyExists = true;
                 }
@@ -337,12 +341,15 @@ class WorkerToWorkerConnection {
         // Context for the client
         ClientContext context;
         
+        //cout << "Calling MessageForFollower via workerStub\n";
         Status status = workerStub->MessageForFollower(&context, request, &reply);
         
         if(status.ok()) {
+            //cout << "MessageForFollower returned Status OK\n";
             return;
         }
         else {
+            //cout << "MessageForFollower returned Status BAD\n";
             /*
                 TO DO
                 
@@ -364,6 +371,7 @@ class WorkerToWorkerConnection {
         Reply reply;
         ClientContext context;
         
+        cout << "Calling SaveChat via workerStub\n";
         Status status = workerStub->SaveChat(&context, request, &reply);
         
         if(!status.ok()) {
@@ -371,7 +379,6 @@ class WorkerToWorkerConnection {
         }
     }
 };
-
 
 // Searches for a connection to a worker with the specified address
 // If it cannot be found in the database, establish a connection to the worker
@@ -599,7 +606,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 
                 // write message on other two servers
                 if(c->secondary1Worker != "NONE") {
-                    findWorker(c->secondary1Worker)->SaveChat(username, followerUsernames, fileinput);    
+                    findWorker(c->secondary1Worker)->SaveChat(username, followerUsernames, fileinput); 
                 }
                 if(c->secondary2Worker != "NONE") {
                     findWorker(c->secondary2Worker)->SaveChat(username, followerUsernames, fileinput);
@@ -667,7 +674,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     
     // Worker sends RPC to worker to write a chat message to a client's stream
     Status MessageForFollower(ServerContext* context, const FollowerMessage* request, Reply* reply) override {
-        
+        //cout << "Message For Follower Here 1\n";
         string username = request->username();
         string message = request->msg();
         
@@ -677,20 +684,23 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         // Make sure client is in the database
         // If so, this is the primary worker
         if(userIndex != -1) {
+            //cout << "Message For Follower Here 2\n";
             Client* client = &clientsConnected[userIndex];
         
             // Write message to client's stream if they are in chat mode
             if(client->stream != 0) {
+                //cout << "Message For Follower Here 3\n";
                 Message newMsg; 
                 newMsg.set_msg(message);
                 client->stream->Write(newMsg);
             }
         }
         else {
+            //cout << "Message For Follower Here 4\n";
             reply->set_msg("Not Primary Worker");
             return Status::OK;
         }
-        
+        //cout << "Message For Follower Here 5\n";
         reply->set_msg("Success");
         
         return Status::OK;
@@ -737,7 +747,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     
     // save a chat message in the text files for the user who sent the message and all the followers of that user
     Status SaveChat(ServerContext* context, const SaveMessage* request, Reply* reply) override {
-        
         string username = request->username();
         string chatMessage = request->message();
         
@@ -767,8 +776,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         }
         */
         
-        //save chatMessage here somehow, ask Kyra on how to do it exactly
-        
         return Status::OK;
     }
     
@@ -795,8 +802,6 @@ void* RunWorker(void* v) {
 }
 
 void ConnectToMaster(string workerHost, string workerPort) {
-    
-    
     shared_ptr<Channel> channel = grpc::CreateChannel(masterAddress, grpc::InsecureChannelCredentials());
     masterConnection = new WorkerToMasterConnection(channel);
     
