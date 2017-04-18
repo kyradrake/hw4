@@ -91,6 +91,9 @@ service MessengerWorker {
     
     // Starts a new worker process
     rpc StartNewWorker (CreateWorkerRequest) returns (Reply) {}
+    
+    // Sends a chat from one worker to another and writes the chat into its text file
+    rpc SaveChat (Request) returns (Reply) {}
 }
 
 message ClientListReply {

@@ -341,7 +341,7 @@ class WorkerToWorkerConnection {
         NOTE
         Not sure if we will use this but it could come in handy at some point
     */
-    bool operator==(const WorkerToWorkerConnection& w1) const{
+    bool operator==(const WorkerToWorkerConnection& w1) const {
         return (connectedWorkerAddress == w1.connectedWorkerAddress);
     }
     
@@ -369,6 +369,22 @@ class WorkerToWorkerConnection {
                 
                 What to do if the message doesn't send?
             */
+        }
+    }
+    
+    void SaveChat(string username, string chatMessage) {
+        
+        Request request;
+        request.set_username(username);
+        request.add_arguments(chatMessage);
+        
+        Reply reply;
+        ClientContext context;
+        
+        Status status = workerStub->SaveChat(&context, request, &reply);
+        
+        if(!status.ok()) {
+            cout << "ERROR: Didn't send chat to " << connectedWorkerAddress << endl;
         }
     }
 };
@@ -742,6 +758,35 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         system(systemArgs.c_str());
         
         reply->set_msg("Made new worker on: " + workerPort);
+        
+        return Status::OK;
+    }
+    
+    Status SaveChat(ServerContext* context, const Request* request, Reply* reply) override {
+        
+        string username = request->username();
+        string chatMessage = request->arguments(0);
+        
+        //find the user in the database we need to write to
+        int clientIndex = findUser(username);
+        Client c = clientsConnected[clientIndex];
+        
+        //save the chat message in their text file
+        string filename = username + ".txt";
+        ofstream userFile(filename,ios::app|ios::out|ios::in);
+        userFile << chatMessage;
+        
+        //save the chat message in their followers text files
+        for(ClientFollower follower : c.clientFollowers) {
+            
+            string followerUsername = follower.username;
+            
+            string followingFile = followerUsername + "following.txt";
+            ofstream file(followingFile,ios::app|ios::out|ios::in);
+            file << chatMessage;
+        }
+        
+        //save chatMessage here somehow, ask Kyra on how to do it exactly
         
         return Status::OK;
     }
