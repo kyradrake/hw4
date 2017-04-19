@@ -638,9 +638,12 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 if(c->secondary1Worker != "NONE") {
                     string sec1Worker = findWorker(c->secondary1Worker)->SaveChat(username, followerUsernames, fileinput); 
                     
+                    c->secondary1Worker = sec1Worker;
                 }
                 if(c->secondary2Worker != "NONE") {
-                    findWorker(c->secondary2Worker)->SaveChat(username, followerUsernames, fileinput);
+                    string sec2Worker = findWorker(c->secondary2Worker)->SaveChat(username, followerUsernames, fileinput);
+                    
+                    c->secondary2Worker = sec2Worker;
                 }
             }
             //If message = "Set Stream", print the first 20 chats from the people you follow
@@ -720,6 +723,10 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             if(client->stream != 0) {
                 Message newMsg; 
                 newMsg.set_msg(message);
+                newMsg.set_primary(client->primaryWorker);
+                newMsg.set_secondary1(client->secondary1Worker);
+                newMsg.set_secondary2(client->secondary2Worker);
+                
                 client->stream->Write(newMsg);
             }
         }

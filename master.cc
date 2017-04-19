@@ -746,7 +746,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
                 Reply replyHB;
                 ClientContext clientContext;
                 
-                Status status w->workerStub->CheckWorker(&clientContext, requestHB, &replyHB);
+                Status status = w->workerStub->CheckWorker(&clientContext, requestHB, &replyHB);
                 
                 if(status.ok()){
                     reply->set_msg(w->getWorkerAddress());
