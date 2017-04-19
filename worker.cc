@@ -600,6 +600,10 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 masterConnection->UpdateClientData(username);
             }
             
+            c->primaryWorker = message.primary();
+            c->secondary1Worker = message.secondary1();
+            c->secondary2Worker = message.secondary2();
+            
             // open "username.txt"
             string filename = username + ".txt";
             ofstream userFile(filename,ios::app|ios::out|ios::in);
@@ -636,6 +640,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 
                 // write message on other two servers
                 if(c->secondary1Worker != "NONE") {
+                    cout << "Reassigning Secondary 1 Worker for: " << username << endl;
                     string sec1Worker = findWorker(c->secondary1Worker)->SaveChat(username, followerUsernames, fileinput); 
                     
                     if(c->secondary1Worker != sec1Worker) {
@@ -644,6 +649,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                     }
                 }
                 if(c->secondary2Worker != "NONE") {
+                    cout << "Reassigning Secondary 2 Worker for: " << username << endl;
                     string sec2Worker = findWorker(c->secondary2Worker)->SaveChat(username, followerUsernames, fileinput);
                     
                     if(c->secondary2Worker != sec2Worker) {
