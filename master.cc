@@ -77,6 +77,7 @@ using hw4::MessengerMaster;
 using hw4::MessengerWorker;
 using hw4::ClientListReply;
 using hw4::CreateWorkerRequest;
+using hw4::ListReply;
 
 using namespace std;
 
@@ -542,6 +543,28 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         } else {
             cout << "ERROR: user not found in the database in UpdateClientData";
         }
+        return Status::OK;
+    }
+    
+    Status AskForFile(ServerContext* context, const Request* request, ListReply* reply) override {
+        
+        string file = request->arguments(0) + ".txt";
+        
+        string line;
+        ifstream i(file);
+        while(getline(i,line)) {
+            reply->add_msgs(line);
+        }
+        
+        return Status::OK;
+    }
+    
+    Status GetAllClients(ServerContext* context, const Request* request, ListReply* reply) override {
+        
+        for(int i = 0; i < clientDB.size(); i++){
+            reply->add_msgs(clientDB[i]->username);
+        }
+        
         return Status::OK;
     }
 };

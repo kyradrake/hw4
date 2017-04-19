@@ -79,6 +79,7 @@ using hw4::SaveMessage;
 using hw4::MessengerWorker;
 using hw4::MessengerMaster;
 using hw4::CreateWorkerRequest;
+using hw4::ListReply;
 
 using namespace std;
 
@@ -794,6 +795,47 @@ void ConnectToMaster(string workerHost, string workerPort) {
             connected = true;
         }
     }
+}
+
+void AskForFile(string nameOfFile){
+    
+    Request request;
+    request.add_arguments(nameOfFile);
+    
+    ListReply reply;
+    ClientContext context;
+
+    Status status = masterConnection->masterStub->AskForFile(&context, request, &reply);
+    
+    if(status.ok()) {
+        for(int i = 0; i < reply.msgs().size(); i++) {
+            string filename = nameOfFile + ".txt";
+            ofstream file(filename,ios::app|ios::out|ios::in);
+            file << reply.msgs(i);
+        }
+    } else {
+        cout << "SOMETHING BAD HAPPENED IN ASKFORFILES" << endl;
+    }
+}
+
+vector<string> GetAllClients(){
+    
+    Request request;
+    ListReply reply;
+    ClientContext context;
+
+    Status status = masterConnection->masterStub->GetAllClients(&context, request, &reply);
+
+    vector<string> rVal;
+    
+    if(status.ok()) {
+        for(int i = 0; i < reply.msgs().size(); i++){
+            rVal.push_back(reply.msgs(i));
+        }
+    } else {
+        cout << "SOMETHING BAD HAPPENED IN GETALLCLIENTS" << endl;
+    }
+    return rVal;
 }
 
 int main(int argc, char** argv) {

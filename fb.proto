@@ -59,6 +59,12 @@ service MessengerMaster {
     
     // updates the client struct on the worker that keeps track of the client
     rpc UpdateClientData (Request) returns (ClientListReply) {}
+    
+    // Worker asks the master for its list of clients
+    rpc GetAllClients (Request) returns (ListReply) {}
+    
+    // Returns all the lines of a given text file
+    rpc AskForFile (Request) returns (ListReply) {}
 }
 
 // The service definition for the worker processes
@@ -116,6 +122,10 @@ message Request {
 
 message Reply {
     string msg = 1;
+}
+
+message ListReply {
+    repeated string msgs = 1;
 }
 
 message WorkerAddress {
