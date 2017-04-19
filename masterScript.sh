@@ -2,28 +2,19 @@
 #echo "Starting initial startup for the reliable server."
 #echo ""
 
-#./fbsd -p 4632 &     #-m true 
-#export p1=$!
-
-./master -h lenss-comp1.cse.tamu.edu -p 4732 &
+# master process
+./master -h lenss-comp1.cse.tamu.edu -p 4232 &
 export p1=$!
 
-./worker -h lenss-comp1.cse.tamu.edu -p 4733 -m lenss-comp1.cse.tamu.edu -a 4732 &
+# master replica process
+./master -h lenss-comp1.cse.tamu.edu -p 4233 -r replica -m 4232 &
 export p2=$!
 
+# worker process
+./worker -h lenss-comp1.cse.tamu.edu -p 4234 -m lenss-comp1.cse.tamu.edu -a 4232 &
+export p3=$!
 
-#./worker 4634
-
-#./fbsd -p 4633
-
-#export p3=$!
-
-#echo "Press enter to kill the following processes individually:"
+# print process IDs for processes started
 echo $p1
 echo $p2
-
-#echo $p3
-#read input
-#kill $p1
-#kill $p2
-#kill $p3
+echo $p3

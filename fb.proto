@@ -74,6 +74,9 @@ service MessengerMaster {
     
     // Sends new/updated database entry for a worker to a master replica
     rpc UpdateReplicaWorker (WorkerData) returns (Reply) {}
+    
+    // Master replica notifies master that it has connected
+    rpc MasterReplicaConnected (Request) returns (Reply) {}
 }
 
 // The service definition for the worker processes

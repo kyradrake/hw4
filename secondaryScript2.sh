@@ -1,10 +1,10 @@
-./worker -h lenss-comp4.cse.tamu.edu -p 4732 -m lenss-comp1.cse.tamu.edu -a 4732 -f true &
+./worker -h lenss-comp4.cse.tamu.edu -p 4232 -m lenss-comp1.cse.tamu.edu -a 4232 -f true &
 export p1=$!
 
-./worker -h lenss-comp4.cse.tamu.edu -p 4733 -m lenss-comp1.cse.tamu.edu -a 4732 &
+./worker -h lenss-comp4.cse.tamu.edu -p 4233 -m lenss-comp1.cse.tamu.edu -a 4232 &
 export p2=$!
 
-./worker -h lenss-comp4.cse.tamu.edu -p 4734 -m lenss-comp1.cse.tamu.edu -a 4732 &
+./worker -h lenss-comp4.cse.tamu.edu -p 4234 -m lenss-comp1.cse.tamu.edu -a 4232 &
 export p3=$!
 
 echo $p1

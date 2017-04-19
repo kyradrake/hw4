@@ -153,6 +153,15 @@ struct Client {
     }
 };
 
+class MasterToMasterConnection;
+
+// notes if process is a master or master replica
+// if true, this is the master process
+// if false, this is a master replica
+bool isMaster = true;
+
+vector<MasterToMasterConnection*> masterConnection = vector<MasterToMasterConnection*>();
+
 //Vector that stores every client that has been created
 vector<Client*> clientDB;
 
@@ -204,17 +213,52 @@ int findWorker(string address){
 string master_hostname;
 string master_portnumber;
 
+class MasterToMasterConnection {
+    public:
+    string connectedMasterAddress;
+    unique_ptr<MessengerMaster::Stub> masterStub;
+    
+    MasterToMasterConnection(string maddress, shared_ptr<Channel> channel) {
+        connectedMasterAddress = maddress;
+        masterStub = MessengerMaster::NewStub(channel);
+    }
+    
+    // establishes a connection between a master and master replica
+    void ReplicaConnectToMaster() {
+        //keep on re-running until we connect to the master
+        bool connected = false;
+        while(!connected){
+            // Data being sent to the master
+            Request request;
+            request.set_username("Master Replica");
+            request.add_arguments(masterAddress);
+
+            // Container for the data from the master
+            Reply reply;
+
+            // Context for the client
+            ClientContext context;
+            
+            Status status = masterStub->MasterReplicaConnected(&context, request, &reply);
+            if(status.ok()){
+                connected = true;
+                return;
+            }
+        }
+    }
+};
+
 // Logic and data behind the server's behavior.
 class MessengerServiceMaster final : public MessengerMaster::Service {
   
    Status WorkerConnected(ServerContext* context, const WorkerAddress* request, Reply* reply) override {
-       cout << "Master - New Worker Connected to Master\n";
-       
        string hostname = request->host();
        string portnumber = request->port();
        
        shared_ptr<Channel> workerChannel = grpc::CreateChannel(hostname + ":" + portnumber, grpc::InsecureChannelCredentials());
        WorkerProcess* worker = new WorkerProcess(hostname, portnumber, workerChannel);
+       
+       cout << "Master - New Worker Connected: " << worker->getWorkerAddress() << endl;
        
        //check to see if worker already exists
        bool alreadyExists = false;
@@ -228,9 +272,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
        if(!alreadyExists) {
            listWorkers.push_back(worker);
        }
-       
-       cout << "Master, list workers size in WorkerConnected: " << listWorkers.size() << "\n";
-       
+
        return Status::OK;
    }
 
@@ -243,8 +285,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         int indexSecondary2 = -1;
         
         int currentMin = 999999;
-        
-        cout << "Master, FindPrimayWorker, listWorkers size: " << listWorkers.size() << endl;
         
         //initial loop to find the index for the primary worker
         for(int i = 0; i < listWorkers.size(); i++){
@@ -304,7 +344,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             Status status = listWorkers[i]->workerStub->NumberClientsConnected(&clientContext, clientRequest, &clientReply);
       
             if(status.ok()) {
-                cout << clientReply.msg() << endl;
                 if(stoi(clientReply.msg()) < currentMin && (listWorkers[i]->hostname != listWorkers[indexPrimary]->hostname && listWorkers[i]->hostname != listWorkers[indexSecondary1]->hostname)){
                     indexSecondary2 = i;
                     currentMin = stoi(clientReply.msg());
@@ -681,7 +720,31 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         reply->set_msg("Success");
         return Status::OK;
     }
+    
+    // master replica sends its address to the master process
+    Status MasterReplicaConnected(ServerContext* context, const Request* request, Reply* reply) override {
+        string replicaAddress = request->arguments(0);
+        shared_ptr<Channel> channel = grpc::CreateChannel(replicaAddress, grpc::InsecureChannelCredentials());
+    
+        // add connection to the new master replica to the database
+        MasterToMasterConnection* replica = new MasterToMasterConnection(replicaAddress, channel);
+        masterConnection.push_back(replica);
+        
+        cout << "Master - Connected to a Replica: " << replicaAddress << endl;
+        
+        reply->set_msg("Success");
+        return Status::OK;
+    }
 };
+
+// Used to connect master and master replica processes together
+void ConnectToMaster(string port) {
+    string address = master_hostname + ":" + port;
+    shared_ptr<Channel> channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+    
+    MasterToMasterConnection* master = new MasterToMasterConnection(address, channel);
+    masterConnection.push_back(master);
+}
 
 void* RunMaster(void* v) {
     string address = master_hostname + ":" + master_portnumber;
@@ -697,7 +760,12 @@ void* RunMaster(void* v) {
     
     // Finally assemble the server.
     unique_ptr<Server> master(builder.BuildAndStart());
-    cout << "Master - Master listening on " << address << endl;
+    if(isMaster) {
+        cout << "Master - Master listening on " << address << endl;
+    }
+    else {
+        cout << "Master Replica - Replica listening on " << address << endl;
+    }
 
     //setting up MasterAddress
     masterAddress = address;
@@ -850,7 +918,7 @@ int main(int argc, char** argv) {
     master_portnumber = "4632";
     
     int opt = 0;
-    while ((opt = getopt(argc, argv, "h:p:")) != -1){
+    while ((opt = getopt(argc, argv, "h:p:r:m:")) != -1){
         switch(opt) {
             case 'h':
                 master_hostname = optarg;
@@ -858,20 +926,29 @@ int main(int argc, char** argv) {
             case 'p':
                 master_portnumber = optarg;
                 break;
+            case 'r':
+                isMaster = false;
+                break;
+            case 'm':
+                ConnectToMaster(optarg);
+                break;
             default:
                 cerr << "Invalid Command Line Argument\n";
         }
     }
+    masterAddress = master_hostname + ":" + master_portnumber;
     
     pthread_t masterThread;
 	pthread_create(&masterThread, NULL, RunMaster, NULL);
     
-    cout << "Master - Thread started\n";
-    
-    pthread_t heartbeatThread;
-	pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
-    
-    cout << "Master - Heartbeat Thread started\n";
+    // master starts to heartbeat the workers
+    if(isMaster) {
+        pthread_t heartbeatThread;
+        pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
+    }
+    else {
+        masterConnection[0]->ReplicaConnectToMaster();
+    }
     
     while(true) {
         continue;
