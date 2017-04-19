@@ -65,6 +65,15 @@ service MessengerMaster {
     
     // Returns all the lines of a given text file
     rpc AskForFile (Request) returns (ListReply) {}
+    
+    // Returns all workers currently in the database
+    rpc GetAllWorkers (Request) returns (WorkerData) {}
+    
+    // Sends new/updated database entry for a client to a master replica
+    rpc UpdateReplicaClient (ClientData) returns (Reply) {}
+    
+    // Sends new/updated database entry for a worker to a master replica
+    rpc UpdateReplicaWorker (WorkerData) returns (Reply) {}
 }
 
 // The service definition for the worker processes
@@ -140,7 +149,6 @@ message AssignedWorkers {
 }
 
 message Message {
-
   //Username who sent the message
   string username = 1;
   
@@ -177,4 +185,31 @@ message SaveMessage {
     
     // message from user
     string message = 3;
+}
+
+message ClientData {
+    // client's username
+    string username = 1;
+    
+    // client's followers
+    repeated string followers = 2;
+    
+    // client's following
+    repeated string following = 3;
+    
+    // client's workers
+    string primary = 4;
+    string secondary1 = 5;
+    string secondary2 = 6;
+}
+
+message WorkerData {
+    // worker's host address
+    repeated string host = 1;
+    
+    // worker's port number
+    repeated string port = 2;
+    
+    // denotes whether the worker should be added or deleted
+    string operation = 3;
 }

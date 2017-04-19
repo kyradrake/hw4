@@ -78,6 +78,8 @@ using hw4::MessengerWorker;
 using hw4::ClientListReply;
 using hw4::CreateWorkerRequest;
 using hw4::ListReply;
+using hw4::ClientData;
+using hw4::WorkerData;
 
 using namespace std;
 
@@ -117,8 +119,6 @@ class WorkerProcess {
 struct Client {
     string username;
    
-    //int following_file_size = 0;
-    
     // usernames for the clients the user follows
     vector<string> clientFollowers;
     
@@ -187,6 +187,17 @@ WorkerProcess* getWorker(string address) {
         }
     }
     return NULL;
+}
+
+int findWorker(string address){
+    int index = 0;
+    for(WorkerProcess* w : listWorkers){
+        if(w->getWorkerAddress() == address){
+            return index;
+        }
+        index++;
+    }
+    return -1;
 }
 
 //hostname and portnumber for the master
@@ -561,12 +572,113 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         return Status::OK;
     }
     
+    // returns a list of all client usernames currently in the database
     Status GetAllClients(ServerContext* context, const Request* request, ListReply* reply) override {
         
         for(int i = 0; i < clientDB.size(); i++){
             reply->add_msgs(clientDB[i]->username);
         }
         
+        return Status::OK;
+    }
+    
+    // returns addresses for all workers currently in the database
+    // called when a new master replica process is started
+    Status GetAllWorkers(ServerContext* context, const Request* request, WorkerData* reply) override {
+        
+        for(WorkerProcess* w : listWorkers) {
+            reply->add_host(w->hostname);
+            reply->add_port(w->portnumber);
+        }
+        
+        reply->set_operation("Add");
+        
+        return Status::OK;
+    }
+    
+    // sends updated data for a client
+    // master sends data to the replica each time a client's data is changed
+    Status UpdateReplicaClient(ServerContext* context, const ClientData* request, Reply* reply) override {
+        Client* client;
+        
+        vector<string> followers = vector<string>();
+        vector<string> following = vector<string>();
+        
+        // retrieve all followers from request
+        for(string s : request->followers()) {
+            followers.push_back(s);
+        }
+        
+        // retrieve all following from request
+        for(string s : request->following()) {
+            following.push_back(s);
+        }
+        
+        // lookup client's username in the database
+        int clientIndex = findUser(request->username());
+        
+        if(clientIndex != -1) {
+            // if client is already in the database, reset data
+            client = clientDB[clientIndex];
+            
+            client->clientFollowers = followers;
+            client->clientFollowing = following;
+            client->primaryWorker = request->primary();
+            client->secondary1Worker = request->secondary1();
+            client->secondary2Worker = request->secondary2();
+        }
+        else {
+            // if client isn't in the database, add it 
+            client->username = request->username();
+            client->clientFollowers = followers;
+            client->clientFollowing = following;
+            client->primaryWorker = request->primary();
+            client->secondary1Worker = request->secondary1();
+            client->secondary2Worker = request->secondary2();
+            
+            clientDB.push_back(client);
+        }
+        reply->set_msg("Success");
+        return Status::OK;
+    }
+    
+    // sends updated data for a worker
+    // master sends data to the replica each time a worker is added/deleted
+    Status UpdateReplicaWorker(ServerContext* context, const WorkerData* request, Reply* reply) override {
+        string hostname = request->host(0);
+        string portnumber = request->port(0);
+        string workerAddress = hostname + ":" + portnumber;
+        
+        // add a new worker to the database
+        if(request->operation() == "Add") {
+            // check if a worker at the address already exists
+            if(getWorker(workerAddress) != NULL) {
+                return Status::CANCELLED;
+            }
+            
+            // create a channel to the new worker
+            shared_ptr<Channel> workerChannel = grpc::CreateChannel(hostname + ":" + portnumber, grpc::InsecureChannelCredentials());
+            
+            WorkerProcess* worker = new WorkerProcess(hostname, portnumber, workerChannel);
+            
+            // add the new worker to the database
+            listWorkers.push_back(worker);
+        }
+        // delete an existing worker from the database
+        else if(request->operation() == "Delete") {
+            // get index for worker in the database
+            int workerIndex = findWorker(workerAddress);
+            
+            if(workerIndex == -1) {
+                return Status::CANCELLED;
+            }
+            listWorkers.erase(listWorkers.begin()+workerIndex);
+        }
+        else {
+            return Status::CANCELLED;
+        }
+        
+        reply->set_msg("Success");
         return Status::OK;
     }
 };
