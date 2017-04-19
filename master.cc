@@ -305,20 +305,11 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             }
         }
         
-        
-        /* 
-            TO DO
-            
-            Use clientUsername to find the client in the client DB
-            Add primary, secondary1, and secondary2 workers to the client object
-        
-        */
-        
         // if user is not in the database yet, userIndex=-1, meaning that they have connected for the first time
         // if userIndex=-1, don't set their primary and secondary workers, THEY ARENT IN THE DB YET!!!!
-        
         int userIndex = findUser(clientUsername);
         
+        // set primary worker for client
         if(indexPrimary != -1){
             string primaryAddress = listWorkers[indexPrimary]->getWorkerAddress();
             reply->set_primary(primaryAddress);
@@ -328,11 +319,12 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         } else {
             reply->set_primary("NONE");
             if(userIndex != -1) {
-                clientDB[userIndex]->primaryWorker = "";
+                clientDB[userIndex]->primaryWorker = "NONE";
             }
             
         }
         
+        // set secondary1 worker for client
         if(indexSecondary1 != -1){
             string secondary1Address = listWorkers[indexSecondary1]->getWorkerAddress();
             reply->set_secondary1(secondary1Address);
@@ -342,10 +334,11 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         } else {
             reply->set_secondary1("NONE");
             if(userIndex != -1) {
-                clientDB[userIndex]->secondary1Worker = "";
+                clientDB[userIndex]->secondary1Worker = "NONE";
             }
         }
         
+        // set secondary2 worker for client
         if(indexSecondary2 != -1){
             string secondary2Address = listWorkers[indexSecondary2]->getWorkerAddress();
             reply->set_secondary2(secondary2Address);
@@ -355,7 +348,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         } else {
             reply->set_secondary2("NONE");
             if(userIndex != -1) {
-                clientDB[userIndex]->secondary2Worker = "";
+                clientDB[userIndex]->secondary2Worker = "NONE";
             }
         }
         
@@ -737,8 +730,8 @@ int main(int argc, char** argv) {
     
     cout << "Master - Thread started\n";
     
-    pthread_t heartbeatThread;
-	pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
+    //pthread_t heartbeatThread;
+	//pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
     
     cout << "Master - Heartbeat Thread started\n";
     

@@ -341,15 +341,12 @@ class WorkerToWorkerConnection {
         // Context for the client
         ClientContext context;
         
-        //cout << "Calling MessageForFollower via workerStub\n";
         Status status = workerStub->MessageForFollower(&context, request, &reply);
         
         if(status.ok()) {
-            //cout << "MessageForFollower returned Status OK\n";
             return;
         }
         else {
-            //cout << "MessageForFollower returned Status BAD\n";
             /*
                 TO DO
                 
@@ -371,7 +368,6 @@ class WorkerToWorkerConnection {
         Reply reply;
         ClientContext context;
         
-        cout << "Calling SaveChat via workerStub\n";
         Status status = workerStub->SaveChat(&context, request, &reply);
         
         if(!status.ok()) {
@@ -752,7 +748,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         
         //find the user in the database we need to write to
         int clientIndex = findUser(username);
-        Client c = clientsConnected[clientIndex];
+        Client* c = &clientsConnected[clientIndex];
         
         //save the chat message in their text file
         string filename = username + ".txt";
