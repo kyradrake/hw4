@@ -730,8 +730,8 @@ int main(int argc, char** argv) {
     
     cout << "Master - Thread started\n";
     
-    //pthread_t heartbeatThread;
-	//pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
+    pthread_t heartbeatThread;
+	pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
     
     cout << "Master - Heartbeat Thread started\n";
     
