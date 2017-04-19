@@ -735,6 +735,28 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         reply->set_msg("Success");
         return Status::OK;
     }
+    
+    Status GetWorkerOnHost(ServerContext* context, const Request* request, Reply* reply) override {
+        string host = request->arguments(0);
+        
+        for(WorkerProcess* w : listWorkers) {
+            if(w->hostname == host) {
+                // heartbeat worker to make sure it's still active
+                Request requestHB;
+                Reply replyHB;
+                ClientContext clientContext;
+                
+                Status status w->workerStub->CheckWorker(&clientContext, requestHB, &replyHB);
+                
+                if(status.ok()){
+                    reply->set_msg(w->getWorkerAddress());
+                    return Status::OK;
+                }
+            }
+        }
+        reply->set_msg("Failure");
+        return Status::OK;
+    }
 };
 
 // Used to connect master and master replica processes together

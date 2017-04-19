@@ -100,6 +100,7 @@ vector<WorkerToWorkerConnection*> workerConnections;
 vector<Client> clientsConnected = vector<Client>();
 
 // worker's own address
+string workerHost = "";
 string workerAddress = "";
 
 // master's address
@@ -317,6 +318,29 @@ class WorkerToMasterConnection {
             cout << "SOMETHING BAD HAPPENED IN UPDATECLIENTWORKER" << endl;
         }
     }
+    
+    string GetWorkerOnHost(string host) {
+        // Data being sent to the server
+        Request request;
+        request.add_arguments(host);
+        
+        // Container for the data from the server
+        Reply reply;
+        
+        // Context for the client
+        ClientContext context;
+        
+        // Get a worker on host
+        Status status = masterStub->GetWorkerOnHost(&context, request, &reply);
+        
+        if(status.ok()) {
+            // Reply = "Failure" if server is dead
+            return reply.msg();
+        }
+        else {
+            return "Failure";
+        }
+    }
 };
 
 class WorkerToWorkerConnection {
@@ -327,6 +351,10 @@ class WorkerToWorkerConnection {
     WorkerToWorkerConnection(string waddress, shared_ptr<Channel> channel) {
         connectedWorkerAddress = waddress;
         workerStub = MessengerWorker::NewStub(channel);
+    }
+    
+    string getHostname(){
+        return connectedWorkerAddress.substr(0,24);
     }
     
     // sends the message to the specified user's worker
@@ -358,7 +386,7 @@ class WorkerToWorkerConnection {
     
     // sends a message to the worker to save a chat message in the user's text file
     // and save the chat message to the user's followers' text files
-    void SaveChat(string username, vector<string> followerUsernames, string chatMessage) {
+    string SaveChat(string username, vector<string> followerUsernames, string chatMessage) {
         SaveMessage request;
         request.set_username(username);
         request.set_message(chatMessage);
@@ -372,8 +400,13 @@ class WorkerToWorkerConnection {
         Status status = workerStub->SaveChat(&context, request, &reply);
         
         if(!status.ok()) {
+            // SaveChat failed, find a new secondary worker
             cout << "ERROR: Didn't send chat to " << connectedWorkerAddress << endl;
+            
+            // ask master for new worker on same host
+            return masterConnection->GetWorkerOnHost(getHostname());
         }
+        return connectedWorkerAddress;
     }
 };
 
@@ -603,7 +636,8 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 
                 // write message on other two servers
                 if(c->secondary1Worker != "NONE") {
-                    findWorker(c->secondary1Worker)->SaveChat(username, followerUsernames, fileinput); 
+                    string sec1Worker = findWorker(c->secondary1Worker)->SaveChat(username, followerUsernames, fileinput); 
+                    
                 }
                 if(c->secondary2Worker != "NONE") {
                     findWorker(c->secondary2Worker)->SaveChat(username, followerUsernames, fileinput);
@@ -869,6 +903,7 @@ int main(int argc, char** argv) {
         }
     }
     
+    workerHost = host;
     workerAddress = host + ":" + port;
     masterAddress = masterHost + ":" + masterPort;
     
