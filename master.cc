@@ -552,8 +552,10 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         string line;
         ifstream i(file);
-        while(getline(i,line)) {
-            reply->add_msgs(line);
+        if(!i.fail()){
+            while(getline(i,line)) {
+                reply->add_msgs(line);
+            }
         }
         
         return Status::OK;
@@ -647,6 +649,7 @@ void* Heartbeat(void* v){
                     //new workers will be started via the script once the server is back on
                     
                 } else {
+                    
                     //worker's dead, do what we need to do in here
                     //Need to do: re-run worker on address found in i
                     
@@ -719,7 +722,7 @@ void* Heartbeat(void* v){
                             cout << "ERROR: could not find worker on " << workerHostname << " to create a new worker process on" << endl;
                         }
                     }
-
+                    
                 }
             } else {
                 //FOR TESTING PURPOSES ONLY

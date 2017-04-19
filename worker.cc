@@ -808,9 +808,9 @@ void AskForFile(string nameOfFile){
     Status status = masterConnection->masterStub->AskForFile(&context, request, &reply);
     
     if(status.ok()) {
+        string filename = nameOfFile + ".txt";
+        ofstream file(filename,ios::app|ios::out|ios::in);
         for(int i = 0; i < reply.msgs().size(); i++) {
-            string filename = nameOfFile + ".txt";
-            ofstream file(filename,ios::app|ios::out|ios::in);
             file << reply.msgs(i);
         }
     } else {
@@ -843,9 +843,10 @@ int main(int argc, char** argv) {
     string port = "4633";
     string masterHost = "lenss-comp1.cse.tamu.edu";
     string masterPort = "4632";
+    bool updateFiles = false;
     int opt = 0;
     
-    while ((opt = getopt(argc, argv, "h:p:m:a:")) != -1){
+    while ((opt = getopt(argc, argv, "h:p:m:a:f:")) != -1){
         switch(opt) {
             case 'h':
                 host = optarg;
@@ -859,6 +860,10 @@ int main(int argc, char** argv) {
             case 'a':
                 masterPort = optarg;
                 break;
+            case 'f':
+                cout << "got the flag!" << endl;
+                updateFiles = optarg;
+                break;
             default: 
                 cerr << "Worker - Invalid Command Line Argument\n";
         }
@@ -871,6 +876,17 @@ int main(int argc, char** argv) {
 	pthread_create(&workerThread, NULL, RunWorker, NULL);
     
     ConnectToMaster(host, port);
+    
+    if(updateFiles){
+        cout << "got into updateFiles" << endl;
+        vector<string> clients = GetAllClients();
+        cout << "got the clients: clients.size() == " << clients.size() << endl;
+        for(int i = 0; i < clients.size(); i++){
+            AskForFile(clients[i]);
+            AskForFile(clients[i] + "following");
+        }
+        cout << "finished asking for files" << endl;
+    }
     
     while(true) {
         continue;
