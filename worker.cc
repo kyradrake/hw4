@@ -638,12 +638,18 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 if(c->secondary1Worker != "NONE") {
                     string sec1Worker = findWorker(c->secondary1Worker)->SaveChat(username, followerUsernames, fileinput); 
                     
-                    c->secondary1Worker = sec1Worker;
+                    if(c->secondary1Worker != sec1Worker) {
+                        c->secondary1Worker = sec1Worker;
+                        findWorker(c->secondary1Worker)->SaveChat(username, followerUsernames, fileinput); 
+                    }
                 }
                 if(c->secondary2Worker != "NONE") {
                     string sec2Worker = findWorker(c->secondary2Worker)->SaveChat(username, followerUsernames, fileinput);
                     
-                    c->secondary2Worker = sec2Worker;
+                    if(c->secondary2Worker != sec2Worker) {
+                        c->secondary2Worker = sec2Worker;
+                        findWorker(c->secondary2Worker)->SaveChat(username, followerUsernames, fileinput); 
+                    }
                 }
             }
             //If message = "Set Stream", print the first 20 chats from the people you follow
