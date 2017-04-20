@@ -306,16 +306,43 @@ class MessengerClient {
             
             stream->Write(m);
 
-            cout << "Enter chat messages: \n";
-            while(getline(cin, input)) {
-                m = MakeMessage(uname, input);
-                // set workers in the message
-                m.set_primary(primaryWorker);
-                m.set_secondary1(secondaryWorker1);
-                m.set_secondary2(secondaryWorker2);
+            //for stress testing
+            if(uname == "aa1" || uname == "aa2"){
                 
-                // write message to stream
-                stream->Write(m);
+                int msgs = stoi(messages);
+                int u = stoi(usec);
+                
+                time_t start, end;
+                time(&start);
+                
+                cout << "Beginning of the spam" << endl;
+                for(int i = 0; i < msgs; i++){
+                    m = MakeMessage(uname, "test");
+                    // set workers in the message
+                    m.set_primary(primaryWorker);
+                    m.set_secondary1(secondaryWorker1);
+                    m.set_secondary2(secondaryWorker2);
+
+                    // write message to stream
+                    stream->Write(m);
+                    
+                    usleep(u);
+                }
+                
+                time(&end);
+                cout << "Elapsed time: " << (double)difftime(end,start) << endl;
+            } else {
+                cout << "Enter chat messages: \n";
+                while(getline(cin, input)) {
+                    m = MakeMessage(uname, input);
+                    // set workers in the message
+                    m.set_primary(primaryWorker);
+                    m.set_secondary1(secondaryWorker1);
+                    m.set_secondary2(secondaryWorker2);
+
+                    // write message to stream
+                    stream->Write(m);
+                }
             }
             stream->WritesDone();
             Status status = stream->Finish();
@@ -327,9 +354,6 @@ class MessengerClient {
                 //send request to secondary worker 1 for FindPrimaryWorker() on the master
                 rerouteConnection(secondaryWorker1);
                 Connect();
-
-                //re-call function for next attempt
-                Chat(messages, usec);
             }
             
             /*

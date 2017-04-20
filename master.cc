@@ -246,6 +246,52 @@ class MasterToMasterConnection {
             }
         }
     }
+    
+    // Sends new/updated database entry for a client to a master replica
+    void UpdateReplicaClient(Client* client){
+        
+        ClientData request;
+        request.set_username(client->username);
+        
+        for(int i = 0; i < client->clientFollowers.size(); i++){
+            request.add_followers(client->clientFollowers[i]);
+        }
+        
+        for(int i = 0; i < client->clientFollowing.size(); i++){
+            request.add_following(client->clientFollowing[i]);
+        }
+        
+        request.set_primary(client->primaryWorker);
+        request.set_secondary1(client->secondary1Worker);
+        request.set_secondary2(client->secondary2Worker);
+        
+        Reply reply;
+        
+        ClientContext context;
+        
+        Status status = masterStub->UpdateReplicaClient(&context, request, &reply);
+        if(!status.ok()){
+            cout << "ERROR: failed to update client data on master replica" << endl;
+        }
+    }
+    
+    // Sends new/updated database entry for a worker to a master replica
+    void UpdateReplicaWorker(string hostname, string portnumber, string operation){
+        
+        WorkerData request;
+        request.add_host(hostname);
+        request.add_port(portnumber);
+        request.set_operation(operation);
+        
+        Reply reply;
+        
+        ClientContext context;
+        
+        Status status = masterStub->UpdateReplicaWorker(&context, request, &reply);
+        if(!status.ok()){
+            cout << "ERROR: failed to update worker data on master replica" << endl;
+        }
+    }
 };
 
 // Logic and data behind the server's behavior.
@@ -271,6 +317,11 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
        
        if(!alreadyExists) {
            listWorkers.push_back(worker);
+           
+           //update replicas that a new worker was added
+           for(int i = 1; i < masterConnection.size(); i++){
+               masterConnection[i]->UpdateReplicaWorker(hostname, portnumber, "Add");
+           }
        }
 
        return Status::OK;
@@ -441,6 +492,13 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             
             clientDB.push_back(client);
             reply->set_msg("Login Successful!");
+            
+            //update replicas that a new client was added
+            for(int i = 1; i < masterConnection.size(); i++){
+               masterConnection[i]->UpdateReplicaClient(client);
+            }
+            
+            
         } else {
             reply->set_msg("Welcome Back " + username);
         }
@@ -856,6 +914,7 @@ void* Heartbeat(void* v){
                     //Need to do: re-run worker on address found in i
                     
                     string workerHostname = listWorkers[deadIndex]->hostname;
+                     string deadPortnumber = listWorkers[deadIndex]->portnumber;
                     
                     //loop through the current workers on our hostname, find the largest port and increment it by 1 for our new port
                     int nPort = -1;
@@ -869,8 +928,13 @@ void* Heartbeat(void* v){
                     //remove dead worker from the database
                     listWorkers.erase(listWorkers.begin()+deadIndex);
                     
+                    //update replicas that a worker was removed
+                    for(int i = 1; i < masterConnection.size(); i++){
+                       masterConnection[i]->UpdateReplicaWorker(workerHostname, deadPortnumber, "Delete");
+                    }
+                    
                     //if the dead worker is on the master's server, we can have the master start it
-                    if(listWorkers[deadIndex]->hostname == master_hostname){
+                    if(workerHostname == master_hostname){
 
                         pid_t child = fork();
                         if(child == 0){
