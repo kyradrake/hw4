@@ -596,6 +596,8 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         
         // empty string to return with the list data
         string totalList = "";
+        
+        totalList += "-------------------------------------------------------------\n";
 
         // iterate through all of the users
         for (int i = 0; i < clientDB.size(); i++) {
@@ -815,6 +817,11 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
         reply->set_msg("Failure");
         return Status::OK;
     }
+    
+    Status MasterHeartbeat(ServerContext* context, const Request* request, Reply* reply) override {
+        reply->set_msg("lub-DUB");
+        return Status::OK;
+    }
 };
 
 // Used to connect master and master replica processes together
@@ -914,14 +921,18 @@ void* Heartbeat(void* v){
                     //Need to do: re-run worker on address found in i
                     
                     string workerHostname = listWorkers[deadIndex]->hostname;
-                     string deadPortnumber = listWorkers[deadIndex]->portnumber;
+                    string deadPortnumber = listWorkers[deadIndex]->portnumber;
                     
                     //loop through the current workers on our hostname, find the largest port and increment it by 1 for our new port
-                    int nPort = -1;
+                    int nPort = stoi(master_portnumber);
                     for(int j = 0; j < listWorkers.size(); j++){
                         if(listWorkers[j]->hostname == workerHostname && nPort < stoi(listWorkers[j]->portnumber)){
                             nPort = stoi(listWorkers[j]->portnumber);
                         }
+                    }
+                    //check against Master Replica as well
+                    if(stoi(masterConnection[0]->connectedMasterAddress.substr(25, 4)) > nPort){
+                        nPort = stoi(masterConnection[0]->connectedMasterAddress.substr(25, 4));
                     }
                     string workerPort = to_string(nPort+1);
                     
@@ -998,6 +1009,68 @@ void* Heartbeat(void* v){
     }
 }
 
+//master replica heartbeat to the master
+void* MasterHeartbeat(void* v){
+    while(!isMaster){
+            
+        //Send master lub-DUB
+        Request request;
+        Reply reply;
+        ClientContext context;
+        Status status = masterConnection[0]->masterStub->MasterHeartbeat(&context, request, &reply);
+
+        if(!status.ok()){
+            cout << "Master lub-DUB FAILED" << endl;
+            
+            //calculate new port number location
+            int nPort = stoi(master_portnumber);
+            for(int j = 0; j < listWorkers.size(); j++){
+                if(listWorkers[j]->hostname == master_hostname && nPort < stoi(listWorkers[j]->portnumber)){
+                    nPort = stoi(listWorkers[j]->portnumber);
+                }
+            }
+            string masterReplicaPortnumber = to_string(nPort+1);
+            
+            //run a new master process as a replica
+            pid_t child = fork();
+            if(child == 0){
+                char* argv[11];
+
+                // ./master -h lenss-comp1.cse.tamu.edu -p 4233 -r replica -m 4232 &
+                vector<string> args = {"./master", "-h", master_hostname, "-p", masterReplicaPortnumber, "-r", "replica", "-m", master_portnumber, "&"};
+
+                for(int i = 0; i < args.size(); i++){
+                    string a = args[i];
+                    argv[i] = (char *)a.c_str();
+                }
+
+                argv[10] = NULL;
+
+                execv("./master", argv);
+            }
+            cout << "created new master replica process on " << master_hostname << ":" << masterReplicaPortnumber << endl;
+            
+            //inform all of the workers that we are the new master
+            for(int i = 0; i < listWorkers.size(); i++){
+                Request request;
+                request.add_arguments(master_hostname);
+                request.add_arguments(masterReplicaPortnumber);
+                Reply reply;
+                ClientContext context;
+                Status status = listWorkers[i]->workerStub->UpdateMaster(&context, request, &reply);
+                
+                if(!status.ok()){
+                    cout << "ERROR: worker did not update master address" << endl;
+                }
+            }
+            
+            //change this process to the master
+            masterConnection.erase(masterConnection.begin());
+            isMaster = true;
+        }
+    }
+}
+
 int main(int argc, char** argv) {
     
     //default
@@ -1028,13 +1101,19 @@ int main(int argc, char** argv) {
 	pthread_create(&masterThread, NULL, RunMaster, NULL);
     
     // master starts to heartbeat the workers
-    if(isMaster) {
-        pthread_t heartbeatThread;
-        pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
-    }
-    else {
+    if(!isMaster) {
         masterConnection[0]->ReplicaConnectToMaster();
+        
+        pthread_t masterHeartbeatThread;
+        pthread_create(&masterHeartbeatThread, NULL, MasterHeartbeat, NULL);
     }
+    
+    while(!isMaster) {
+        continue;
+    }
+    
+    pthread_t heartbeatThread;
+    pthread_create(&heartbeatThread, NULL, Heartbeat, NULL);
     
     while(true) {
         continue;

@@ -101,6 +101,7 @@ vector<Client> clientsConnected = vector<Client>();
 
 // worker's own address
 string workerHost = "";
+string workerPort = "";
 string workerAddress = "";
 
 // master's address
@@ -701,13 +702,6 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         return Status::OK; 
     }
     
-    // TO DO -------------------------
-    Status UpdateMasterAddress(ServerContext* context, const Request* request, Reply* reply) override {
-        cout << "Worker - Updating master address\n";
-        
-        return Status::OK;
-    }
-    
     // Master sends RPC to worker to check how many clients are connected to the worker
     Status NumberClientsConnected(ServerContext* context, const Request* request, Reply* reply) override {
         
@@ -808,6 +802,30 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             ofstream file(followingFile,ios::app|ios::out|ios::in);
             file << chatMessage;
         }
+        
+        return Status::OK;
+    }
+    
+    // update the master's address to that of the master replica taking over
+    Status UpdateMaster(ServerContext* context, const Request* request, Reply* reply) override {
+        
+        masterAddress = request->arguments(0) + ":" + request->arguments(1);
+        
+        cout << "masterAddress is now: " << masterAddress;
+        
+        shared_ptr<Channel> channel = grpc::CreateChannel(masterAddress, grpc::InsecureChannelCredentials());
+        masterConnection = new WorkerToMasterConnection(channel);
+
+        //keep on re-running until we connect to the master
+        bool connected = false;
+        while(!connected){
+            Status status = masterConnection->WorkerConnected(workerHost, workerPort);
+            if(status.ok()){
+                connected = true;
+            }
+        }
+        
+        cout << "Started connection to updated master on address: " << masterAddress;
         
         return Status::OK;
     }
@@ -921,6 +939,7 @@ int main(int argc, char** argv) {
     }
     
     workerHost = host;
+    workerPort = port;
     workerAddress = host + ":" + port;
     masterAddress = masterHost + ":" + masterPort;
     

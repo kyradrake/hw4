@@ -80,6 +80,9 @@ service MessengerMaster {
     
     // Returns the address of a worker on the requested server
     rpc GetWorkerOnHost (Request) returns (Reply) {}
+    
+    // Heartbeat from the master replica to the master
+    rpc MasterHeartbeat (Request) returns (Reply) {}
 }
 
 // The service definition for the worker processes
@@ -115,6 +118,9 @@ service MessengerWorker {
     
     // Sends a chat from one worker to another and writes the chat into its text file
     rpc SaveChat (SaveMessage) returns (Reply) {}
+    
+    // Updates the worker's master hostname and portnumber
+    rpc UpdateMaster (Request) returns (Reply) {}
 }
 
 message ClientListReply {
