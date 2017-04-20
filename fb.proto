@@ -152,6 +152,7 @@ message ListReply {
 message WorkerAddress {
     string host = 1;
     string port = 2;
+    int32 clock = 3;
 }
 
 message AssignedWorkers {
@@ -178,6 +179,9 @@ message Message {
   
   //Secondary Worker 2
   string secondary2 = 6;
+  
+  //Vector Clock
+  repeated int32 clock = 7;
 }
 
 message FollowerMessage {
@@ -186,6 +190,9 @@ message FollowerMessage {
     
     // message
     string msg = 2;
+    
+    // clock
+    repeated int32 clock = 3;
 }
 
 message SaveMessage {
@@ -222,6 +229,9 @@ message WorkerData {
     // worker's port number
     repeated string port = 2;
     
+    // worker's clock index
+    repeated int32 clock = 3;
+    
     // denotes whether the worker should be added or deleted
-    string operation = 3;
+    string operation = 4;
 }

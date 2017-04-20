@@ -107,6 +107,34 @@ string workerAddress = "";
 // master's address
 string masterAddress = "";
 
+// vector clock
+int clockIndex;
+vector<int> vectorClock = vector<int>(8);
+
+vector<int> UpdateVectorClock(vector<int> v) {
+    vector<int> clock = vector<int>();
+    if(v.size() != 8) {
+        cout << "Error - VectorClock can't Update\n";
+        return clock;
+    }
+    for(int i=0; i<v.size(); i++) {
+        int localTime = vectorClock[i];
+        int newTime = v[i];
+        
+        // if index for this worker, increment time by 1
+        if(i == clockIndex) {
+            clock.push_back(localTime + 1);
+        }
+        else if(localTime > newTime) {
+            clock.push_back(localTime);
+        }
+        else {
+            clock.push_back(newTime);
+        }
+    }
+    return clock;
+}
+
 // struct to hold information about other clients
 struct ClientFollower {
     string username;
@@ -169,11 +197,12 @@ class WorkerToMasterConnection {
     
     // notifies master that a new worker process has begun
     // sends the workers host and port to master
-    Status WorkerConnected(string workerHost, string workerPort) {
+    Status WorkerConnected(string workerHost, string workerPort, int clock) {
         // Data sent to master 
         WorkerAddress request;
         request.set_host(workerHost);
         request.set_port(workerPort);
+        request.set_clock(clock);
         
         // Data received from master
         Reply reply;
@@ -359,11 +388,15 @@ class WorkerToWorkerConnection {
     }
     
     // sends the message to the specified user's worker
-    void SendMessageToFollower(string followerUsername, string msg) {
+    void SendMessageToFollower(string followerUsername, string msg, vector<int> clock) {
         // Data being sent to the follower's worker
         FollowerMessage request;
         request.set_username(followerUsername);
         request.set_msg(msg);
+        
+        for(int i : clock) {
+            request.add_clock(i);
+        }
         
         // Container for the data from the follower's worker
         Reply reply;
@@ -373,15 +406,8 @@ class WorkerToWorkerConnection {
         
         Status status = workerStub->MessageForFollower(&context, request, &reply);
         
-        if(status.ok()) {
-            return;
-        }
-        else {
-            /*
-                TO DO
-                
-                What to do if the message doesn't send?
-            */
+        if(!status.ok()) {
+            cout << "Message to Follower Could not Send\n";
         }
     }
     
@@ -605,6 +631,12 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             c->secondary1Worker = message.secondary1();
             c->secondary2Worker = message.secondary2();
             
+            vector<int> clock = vector<int>();
+            for(int i : message.clock()) {
+                clock.push_back(i);
+            }
+            UpdateVectorClock(clock);
+            
             // open "username.txt"
             string filename = username + ".txt";
             ofstream userFile(filename,ios::app|ios::out|ios::in);
@@ -625,7 +657,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 // send message to each follower
                 for(ClientFollower follower : c->clientFollowers) {
                     // send message to follower's chat stream
-                    findWorker(follower.worker)->SendMessageToFollower(follower.username, fileinput);
+                    findWorker(follower.worker)->SendMessageToFollower(follower.username, fileinput, vectorClock);
                     
                     // get follower's username
                     string followerUsername = follower.username;
@@ -686,20 +718,16 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
                 //Send the newest messages to the client to be displayed
                 for(int i = 0; i<newestTwenty.size(); i++){
                     newMsg.set_msg(newestTwenty[i]);
+                    newMsg.set_primary(c->primaryWorker);
+                    newMsg.set_secondary1(c->secondary1Worker);
+                    newMsg.set_secondary2(c->secondary2Worker);
+                    
                     stream->Write(newMsg);
                 }    
                 continue;
             } 
         }
         return Status::OK;
-    }
-    
-    // TO DO -------------------------
-    // I don't think we have a use for this
-    Status Worker(ServerContext* context, ServerReaderWriter<Message, Message>* stream) override {
-        //workerPort = reply.msg();
-        //figure out how to actually send the chat messages simultaneously with the chat function
-        return Status::OK; 
     }
     
     // Master sends RPC to worker to check how many clients are connected to the worker
@@ -714,6 +742,12 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
     Status MessageForFollower(ServerContext* context, const FollowerMessage* request, Reply* reply) override {
         string username = request->username();
         string message = request->msg();
+        
+        vector<int> newClock = vector<int>();
+        for(int i : request->clock()) {
+            newClock.push_back(i);
+        }
+        UpdateVectorClock(newClock);
         
         // Find client in database message is for
         int userIndex = findUser(username);
@@ -819,7 +853,7 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         //keep on re-running until we connect to the master
         bool connected = false;
         while(!connected){
-            Status status = masterConnection->WorkerConnected(workerHost, workerPort);
+            Status status = masterConnection->WorkerConnected(workerHost, workerPort, clockIndex);
             if(status.ok()){
                 connected = true;
             }
@@ -859,7 +893,7 @@ void ConnectToMaster(string workerHost, string workerPort) {
     //keep on re-running until we connect to the master
     bool connected = false;
     while(!connected){
-        Status status = masterConnection->WorkerConnected(workerHost, workerPort);
+        Status status = masterConnection->WorkerConnected(workerHost, workerPort, clockIndex);
         if(status.ok()){
             connected = true;
         }
@@ -915,7 +949,7 @@ int main(int argc, char** argv) {
     bool updateFiles = false;
     int opt = 0;
     
-    while ((opt = getopt(argc, argv, "h:p:m:a:f:")) != -1){
+    while ((opt = getopt(argc, argv, "h:p:m:a:f:c:")) != -1){
         switch(opt) {
             case 'h':
                 host = optarg;
@@ -933,9 +967,17 @@ int main(int argc, char** argv) {
                 cout << "got the flag!" << endl;
                 updateFiles = optarg;
                 break;
+            case 'c':
+                clockIndex = stoi(optarg);
+                break;
             default: 
                 cerr << "Worker - Invalid Command Line Argument\n";
         }
+    }
+    
+    // initialize vector clock 
+    for(int i=0; i<8; i++) {
+        vectorClock.push_back(0);
     }
     
     workerHost = host;

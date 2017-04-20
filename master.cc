@@ -89,25 +89,29 @@ class WorkerProcess {
     string hostname;
     string portnumber;
     unique_ptr<MessengerWorker::Stub> workerStub;
+    int vectorClockIndex;
     
     WorkerProcess(){
         hostname = "";
         portnumber= "";
+        vectorClockIndex = 0;
         workerStub = NULL;
     }
     
     WorkerProcess(string h, string p) {
         hostname = h;
         portnumber = p;
+        vectorClockIndex = 0;
         
         shared_ptr<Channel> channel = grpc::CreateChannel(hostname + ":" + portnumber, grpc::InsecureChannelCredentials());
         workerStub = MessengerWorker::NewStub(channel);
     }
     
-    WorkerProcess(string h, string p, shared_ptr<Channel> c){
+    WorkerProcess(string h, string p, shared_ptr<Channel> c, int clock){
         hostname = h;
         portnumber = p;
         workerStub = MessengerWorker::NewStub(c);
+        vectorClockIndex = clock;
     }
     
     string getWorkerAddress() {
@@ -276,11 +280,12 @@ class MasterToMasterConnection {
     }
     
     // Sends new/updated database entry for a worker to a master replica
-    void UpdateReplicaWorker(string hostname, string portnumber, string operation){
+    void UpdateReplicaWorker(string hostname, string portnumber, int clock, string operation){
         
         WorkerData request;
         request.add_host(hostname);
         request.add_port(portnumber);
+        request.add_clock(clock);
         request.set_operation(operation);
         
         Reply reply;
@@ -300,9 +305,10 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
    Status WorkerConnected(ServerContext* context, const WorkerAddress* request, Reply* reply) override {
        string hostname = request->host();
        string portnumber = request->port();
+       int clockIndex = request->clock();
        
        shared_ptr<Channel> workerChannel = grpc::CreateChannel(hostname + ":" + portnumber, grpc::InsecureChannelCredentials());
-       WorkerProcess* worker = new WorkerProcess(hostname, portnumber, workerChannel);
+       WorkerProcess* worker = new WorkerProcess(hostname, portnumber, workerChannel, clockIndex);
        
        cout << "Master - New Worker Connected: " << worker->getWorkerAddress() << endl;
        
@@ -320,7 +326,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
            
            //update replicas that a new worker was added
            for(int i = 1; i < masterConnection.size(); i++){
-               masterConnection[i]->UpdateReplicaWorker(hostname, portnumber, "Add");
+               masterConnection[i]->UpdateReplicaWorker(hostname, portnumber, clockIndex, "Add");
            }
        }
 
@@ -746,6 +752,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
     Status UpdateReplicaWorker(ServerContext* context, const WorkerData* request, Reply* reply) override {
         string hostname = request->host(0);
         string portnumber = request->port(0);
+        int clock = request->clock(0);
         string workerAddress = hostname + ":" + portnumber;
         
         // add a new worker to the database
@@ -758,7 +765,7 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
             // create a channel to the new worker
             shared_ptr<Channel> workerChannel = grpc::CreateChannel(hostname + ":" + portnumber, grpc::InsecureChannelCredentials());
             
-            WorkerProcess* worker = new WorkerProcess(hostname, portnumber, workerChannel);
+            WorkerProcess* worker = new WorkerProcess(hostname, portnumber, workerChannel, clock);
             
             // add the new worker to the database
             listWorkers.push_back(worker);
@@ -922,6 +929,7 @@ void* Heartbeat(void* v){
                     
                     string workerHostname = listWorkers[deadIndex]->hostname;
                     string deadPortnumber = listWorkers[deadIndex]->portnumber;
+                    int clockIndex = listWorkers[deadIndex]->vectorClockIndex;
                     
                     //loop through the current workers on our hostname, find the largest port and increment it by 1 for our new port
                     int nPort = stoi(master_portnumber);
@@ -941,7 +949,7 @@ void* Heartbeat(void* v){
                     
                     //update replicas that a worker was removed
                     for(int i = 1; i < masterConnection.size(); i++){
-                       masterConnection[i]->UpdateReplicaWorker(workerHostname, deadPortnumber, "Delete");
+                       masterConnection[i]->UpdateReplicaWorker(workerHostname, deadPortnumber, clockIndex, "Delete");
                     }
                     
                     //if the dead worker is on the master's server, we can have the master start it
