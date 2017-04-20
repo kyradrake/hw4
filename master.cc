@@ -504,7 +504,6 @@ class MessengerServiceMaster final : public MessengerMaster::Service {
                masterConnection[i]->UpdateReplicaClient(client);
             }
             
-            
         } else {
             reply->set_msg("Welcome Back " + username);
         }
@@ -1009,10 +1008,7 @@ void* Heartbeat(void* v){
                     }
                     
                 }
-            } else {
-                //FOR TESTING PURPOSES ONLY
-                //cout << "lub-Dub" << endl;
-            }
+            } 
         }
     }
 }

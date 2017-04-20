@@ -109,13 +109,15 @@ string masterAddress = "";
 
 // vector clock
 int clockIndex;
-vector<int> vectorClock = vector<int>(8);
+vector<int> vectorClock = vector<int>();
 
 vector<int> UpdateVectorClock(vector<int> v) {
     vector<int> clock = vector<int>();
-    if(v.size() != 8) {
-        cout << "Error - VectorClock can't Update\n";
-        return clock;
+    if(v.size() != vectorClock.size()) {
+        //cout << "Error - VectorClock can't Update\n";
+        //cout << "v.size() = " << v.size() << endl;
+        //cout << "vectorClock.size() = " << vectorClock.size() << endl;
+        return vectorClock;
     }
     for(int i=0; i<v.size(); i++) {
         int localTime = vectorClock[i];
@@ -133,6 +135,16 @@ vector<int> UpdateVectorClock(vector<int> v) {
         }
     }
     return clock;
+}
+
+string printVectorClock() {
+    string s = "<";
+    for(int i=0; i<(vectorClock.size()-1); i++) {
+        s += vectorClock[i];
+        s += ",";
+    }
+    s += vectorClock[vectorClock.size()-1];
+    s += ">";
 }
 
 // struct to hold information about other clients
@@ -644,7 +656,9 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
             // generate message to output to file and to followers
             google::protobuf::Timestamp temptime = message.timestamp();
             string time = google::protobuf::util::TimeUtil::ToString(temptime);
-            string fileinput = time + " :: " + message.username() + ":" + message.msg() + "\n";
+            
+            //string time = printVectorClock();
+            string fileinput = time + " " + message.username() + ":" + message.msg() + "\n";
             
             // "Set Stream" is the default message from the client to initialize the stream
             if(message.msg() != "Set Stream") {
@@ -792,13 +806,10 @@ class MessengerServiceWorker final : public MessengerWorker::Service {
         string masterHostname = request->master_hostname();
         string masterPort = request->master_port();
         
-        // ./worker -h lenss-comp1.cse.tamu.edu -p 4133 -m lenss-comp1.cse.tamu.edu -a 4132 &
-        
         pid_t child = fork();
         if(child == 0){
             char* argv[11];
             
-            //string systemArgs = "./worker -h " + workerHostname + " -p " + workerPort + " -m " + masterHostname + " -a " + masterPort + " &";
             vector<string> args = {"./worker", "-h", workerHostname, "-p", workerPort, "-m", masterHostname, "-a", masterPort, "&"};
             
             for(int i = 0; i < args.size(); i++){
